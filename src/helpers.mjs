@@ -13,6 +13,8 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { log as loggerLog } from "./logger.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(resolve(__dirname, ".."), "public");
 
@@ -52,9 +54,8 @@ export function httpError(status, msg) {
 	return e;
 }
 
-// All logging MUST go to stderr in stdio MCP mode (stdout is reserved for the
-// JSON-RPC protocol). In HTTP mode stderr is fine too — log file if needed.
-export function log(...args) {
-	const ts = new Date().toISOString().slice(11, 19);
-	console.error(`[${ts}][mermaid-renderer]`, ...args);
-}
+// Re-export the structured stderr JSON logger (R008). The body lives in
+// src/logger.mjs so tests can import it directly without going through
+// helpers.mjs. Keeping the named export here preserves the 6
+// single-name ^export invariant in src/server.mjs (MEM015 + S01 audit).
+export const log = loggerLog;

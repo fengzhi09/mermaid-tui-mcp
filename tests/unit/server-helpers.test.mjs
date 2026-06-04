@@ -117,17 +117,27 @@ describe("renderView", () => {
 });
 
 describe("log", () => {
-	it("writes a stderr line with the [HH:MM:SS][mermaid-renderer] prefix", () => {
-		const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+	it("writes a single JSON line to process.stderr with required fields (R008)", () => {
+		const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => {});
 		try {
-			log("hello", 42, { a: 1 });
+			log({ event: "hello", extra: 42 });
 			expect(spy).toHaveBeenCalledTimes(1);
-			const call = spy.mock.calls[0];
-			// first arg is the prefix, then the original args
-			expect(call[0]).toMatch(/^\[\d{2}:\d{2}:\d{2}\]\[mermaid-renderer\]$/);
-			expect(call[1]).toBe("hello");
-			expect(call[2]).toBe(42);
-			expect(call[3]).toEqual({ a: 1 });
+			const written = spy.mock.calls[0][0];
+			const line = typeof written === "string" ? written : Buffer.is(written) ? written.toString("utf-8") : String(written);
+			// Single line ending in newline.
+			expect(line.endsWith("\n")).toBe(true);
+			// No embedded newlines in the body.
+			expect(line.slice(0, -1).includes("\n")).toBe(false);
+			// Parses as JSON; required fields are present and match the call.
+			const obj = JSON.parse(line.replace(/\n$/, ""));
+			expect(obj).toMatchObject({ level: "info", event: "hello", extra: 42 });
+			expect(obj).toHaveProperty("ts");
+			expect(new Date(obj.ts).toISOString()).toBe(obj.ts);
+			// Stable field order: ts, level, event come first.
+			const keys = Object.keys(obj);
+			expect(keys[0]).toBe("ts");
+			expect(keys[1]).toBe("level");
+			expect(keys[2]).toBe("event");
 		} finally {
 			spy.mockRestore();
 		}

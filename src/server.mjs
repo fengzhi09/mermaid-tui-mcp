@@ -59,7 +59,7 @@ const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 const BACKEND = process.env.MERMAID_RENDERER_BACKEND;
 let storage;
 if (BACKEND === "oss") {
-	log("MERMAID_RENDERER_BACKEND=oss: 'oss' backend is a stub for M002; falling back to LocalFsStorage");
+	log({ level: "warn", event: "backend_stub", backend: "oss" });
 	storage = new Storage(DATA);
 } else {
 	// "local" or unset — default
@@ -68,7 +68,7 @@ if (BACKEND === "oss") {
 await storage.load();
 
 setInterval(() => {
-	storage.sweep().catch((e) => log("sweep error:", e));
+	storage.sweep().catch((e) => log({ level: "error", event: "sweep_error", error: String(e?.message || e) }));
 }, 60 * 60 * 1000);
 
 // ============================================================================
@@ -96,7 +96,7 @@ registerTools(mcp, {
 
 const transport = new StdioServerTransport();
 await mcp.connect(transport);
-log(`mcp stdio connected`);
+log({ event: "mcp_stdio_connected" });
 
 // ============================================================================
 // Optional HTTP server (standalone view + pin)
@@ -162,13 +162,13 @@ if (HTTP_ENABLED) {
 			return json(res, 404, { error: "not found" });
 		} catch (e) {
 			const status = e?.status || 500;
-			log(`HTTP ${req.method} ${url.pathname} -> ${status}:`, e?.message || e);
+			log({ level: "error", event: "http_error", method: req.method, path: url.pathname, status, error: String(e?.message || e) });
 			setCors();
 			return json(res, status, { error: e?.message || String(e) });
 		}
 	});
 	httpServer.listen(HTTP_PORT, HTTP_HOST, () => {
-		log(`http listening on http://${HTTP_HOST}:${HTTP_PORT}`);
+		log({ event: "http_listening", host: HTTP_HOST, port: HTTP_PORT });
 	});
 }
 
@@ -186,12 +186,12 @@ function json(res, status, body) {
 	res.end(JSON.stringify(body));
 }
 
-log(`v${VERSION} ready | data: ${DATA} | http: ${HTTP_ENABLED ? `${HTTP_HOST}:${HTTP_PORT}` : "off"} | stats:`, storage.stats());
+log({ event: "boot", version: VERSION, data: DATA, http: HTTP_ENABLED, stats: storage.stats() });
 
 // Graceful shutdown — let in-flight renders finish, then exit.
 for (const sig of ["SIGINT", "SIGTERM"]) {
 	process.on(sig, () => {
-		log(`${sig} received, draining...`);
+		log({ event: "shutdown", signal: sig });
 		setTimeout(() => process.exit(0), 3000).unref();
 	});
 }
