@@ -58,7 +58,7 @@ What remains before M001 is end-to-end usable: S03 owns the structured stderr JS
   - Files: `tests/integration/stdio-mcp.test.mjs`, `tests/evals/eval-09-pin-tool.test.mjs`
   - Verify: npm test -- tests/integration/stdio-mcp.test.mjs tests/evals/eval-09-pin-tool.test.mjs
 
-- [ ] **T05: renderView TITLE XSS-guard test + final coverage gate** `est:30m`
+- [x] **T05: renderView TITLE XSS-guard test + final coverage gate** `est:30m`
   Why: R023 requires escapeHtml on the displayed title. The render-view-title unit test locks the XSS surface for v0.2.0. The final coverage gate proves the new modules (tools.mjs, LocalFsStorage.mjs) maintain the 80% lines floor under vitest's v8 coverage.
   - Files: `tests/unit/render-view-title.test.mjs`
   - Verify: npm test && npm run test:coverage
