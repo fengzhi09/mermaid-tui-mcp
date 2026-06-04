@@ -450,4 +450,34 @@ describe("stdio MCP integration", () => {
 		expect(typeof body.elapsed_ms).toBe("number");
 		expect(body.elapsed_ms).toBeGreaterThanOrEqual(0);
 	});
+
+	// ==========================================================================
+	// S03 — zod -32602 surfaces in the inner CallToolResult payload (R020 + R008
+	// + R010 + R009 path). The renderer's actual error is "mermaid source too
+	// long (200001 chars, max 200000)" — the message must mention the length
+	// and the max so the LLM sees the same hint eval-07 has asserted on.
+	// ==========================================================================
+	it("render_mermaid over stdio MCP returns isError: true with code -32602 for oversized code (eval-07 contract preserved through the S03 wrapper)", async () => {
+		await initialize(server);
+
+		const result = await server.send("tools/call", {
+			name: "render_mermaid",
+			arguments: { code: "a".repeat(200_001) },
+		});
+		expect(result.isError).toBe(true);
+
+		const body = parseCallText(result);
+		// Inner-payload code is -32602 (InvalidParams), NOT the JSON-RPC envelope
+		// -32602. Same number, different namespace — the namespace disambiguation
+		// comment in src/errors.mjs documents this.
+		expect(body.code).toBe(-32602);
+		expect(body.retryable).toBe(false);
+		expect(typeof body.elapsed_ms).toBe("number");
+		expect(body.elapsed_ms).toBeGreaterThanOrEqual(0);
+		// eval-07 substring contract: the message must mention both the actual
+		// length and the max so an LLM can act on the diagnostic.
+		expect(typeof body.message).toBe("string");
+		expect(body.message).toContain("200001");
+		expect(body.message).toContain("200000");
+	});
 });

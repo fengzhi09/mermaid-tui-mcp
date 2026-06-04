@@ -139,4 +139,116 @@ describe("HTTP integration", () => {
 		const html = await viewRes.text();
 		expect(html).toContain(id);
 	});
+
+	// ==========================================================================
+	// S03 (R009) — /health extension: counters + last_render_ms + last_errors[5]
+	// ==========================================================================
+	// Each test exercises the new surface end-to-end through a real child
+	// process — same harness as the main test, just new assertions on the
+	// /health payload after driving the stdio MCP path.
+
+	it("/health exposes the S03 observability surface (counters + last_render_ms + last_errors) after a render and a failure", async () => {
+		await waitForHealth(port);
+
+		await server.send("initialize", {
+			protocolVersion: PROTOCOL_VERSION,
+			capabilities: {},
+			clientInfo: CLIENT_INFO,
+		});
+
+		// 1. one successful render — bumps render_total to 1.
+		const okResult = await server.send("tools/call", {
+			name: "render_mermaid",
+			arguments: { code: "graph TD\n  A-->B" },
+		});
+		expect(okResult.isError).toBeFalsy();
+		expect(JSON.parse(okResult.content[0].text).id).toBeTruthy();
+
+		// 2. one failed render (oversized code → zod -32602) — bumps
+		//    render_errors to 1, pushes to the 5-error ring.
+		const failResult = await server.send("tools/call", {
+			name: "render_mermaid",
+			arguments: { code: "a".repeat(200_001) },
+		});
+		expect(failResult.isError).toBe(true);
+		const failBody = JSON.parse(failResult.content[0].text);
+		expect(failBody.code).toBe(-32602);
+		expect(failBody.retryable).toBe(false);
+
+		// 3. GET /health — verify the S03 extension is live.
+		const healthRes = await fetch(`http://127.0.0.1:${port}/health`);
+		expect(healthRes.status).toBe(200);
+		const health = await healthRes.json();
+
+		// Existing fields are still present (regression on the S02 shape).
+		expect(health.status).toBe("ok");
+		expect(typeof health.version).toBe("string");
+		expect(typeof health.uptimeSec).toBe("number");
+		expect(health.ttlDays).toBe(7);
+		expect(typeof health.total).toBe("number");
+
+		// S03 (R009) extension: counters.
+		expect(health.counters).toBeDefined();
+		expect(health.counters.render_total).toBe(1);
+		expect(health.counters.render_errors).toBe(1);
+		// Other counters stay at 0 (no sweep ran, no write retry, no ascii fail).
+		expect(health.counters.ascii_failures).toBe(0);
+		expect(health.counters.storage_write_retries).toBe(0);
+		expect(health.counters.sweep_runs).toBeGreaterThanOrEqual(0); // load()'s sweep bumped this
+		expect(health.counters.sweep_removed).toBe(0);
+
+		// S03 (R009) extension: last_render_ms is a number — the
+		// wall-clock ms of the most recent tool call. The test renders
+		// 1 success then 1 fail; the failure path is fast (the renderer's
+		// length check throws synchronously), so elapsed_ms can be 0.
+		// We assert >= 0 (the marker exists, it's a real number) rather
+		// than > 0.
+		expect(typeof health.last_render_ms).toBe("number");
+		expect(health.last_render_ms).toBeGreaterThanOrEqual(0);
+
+		// S03 (R009) extension: last_errors ring carries the most recent
+		// tagged failure.
+		expect(Array.isArray(health.last_errors)).toBe(true);
+		expect(health.last_errors.length).toBe(1);
+		expect(health.last_errors[0].code).toBe(-32602);
+		expect(health.last_errors[0].retryable).toBe(false);
+		expect(typeof health.last_errors[0].message).toBe("string");
+		expect(health.last_errors[0].message.length).toBeGreaterThan(0);
+		expect(typeof health.last_errors[0].at).toBe("number");
+	});
+
+	it("/health last_errors ring is bounded at 5 (6 failures → ring holds the most recent 5)", async () => {
+		await waitForHealth(port);
+
+		await server.send("initialize", {
+			protocolVersion: PROTOCOL_VERSION,
+			capabilities: {},
+			clientInfo: CLIENT_INFO,
+		});
+
+		// Drive 6 failed render_mermaid calls. Each one is the same zod
+		// -32602 failure; only the ring is interesting here.
+		for (let i = 0; i < 6; i++) {
+			const failResult = await server.send("tools/call", {
+				name: "render_mermaid",
+				arguments: { code: "a".repeat(200_001) },
+			});
+			expect(failResult.isError).toBe(true);
+		}
+
+		// GET /health — the ring should hold exactly 5 entries, not 6.
+		const healthRes = await fetch(`http://127.0.0.1:${port}/health`);
+		expect(healthRes.status).toBe(200);
+		const health = await healthRes.json();
+
+		expect(Array.isArray(health.last_errors)).toBe(true);
+		expect(health.last_errors.length).toBe(5);
+		// All 6 failures carry the same code, so the 5 ring entries all
+		// share the same code; the structural assertion is the bounded
+		// length.
+		expect(health.last_errors.every((e) => e.code === -32602)).toBe(true);
+		// render_errors counter tracks all 6 failures (counter has no
+		// bounded ring — only the in-memory ring buffer does).
+		expect(health.counters.render_errors).toBe(6);
+	});
 });

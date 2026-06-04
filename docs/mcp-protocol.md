@@ -41,21 +41,19 @@ The client is expected to send a `notifications/initialized` notification after 
 
 ## Tools list
 
-`tools/list` returns one tool:
+`tools/list` returns the 7 tools shipped in v0.1.0 + S02:
 
 ```json
 {
   "tools": [
     {
       "name": "render_mermaid",
-      "description": "Render a Mermaid diagram source string into terminal-safe ASCII art. ALWAYS call this tool before emitting a ```mermaid code fence in your reply. Return value: { id, ascii, fileLink, httpLink }. Use `ascii` in your reply (replacing the raw mermaid source). `fileLink` opens a self-contained HTML viewer at file:// in any browser. `httpLink` opens the same viewer at http://127.0.0.1:5300 (only works if the standalone HTTP daemon was started separately; ignore the 404 if not).",
+      "description": "...",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string",
-            "description": "Mermaid diagram source. E.g. 'graph TD\\n  A-->B'."
-          }
+          "code": { "type": "string", "description": "Mermaid diagram source. E.g. 'graph TD\\n  A-->B'." },
+          "title": { "type": "string", "description": "Optional human label (≤200 chars)." }
         },
         "required": ["code"],
         "additionalProperties": false
@@ -88,7 +86,7 @@ Success response (MCP `CallToolResult`):
   "content": [
     {
       "type": "text",
-      "text": "{\"id\":\"mabc123\",\"ascii\":\"...\",\"fileLink\":\"file:///...\",\"httpLink\":null}"
+      "text": "{\"id\":\"mabc123\",\"ascii\":\"...\",\"fileLink\":\"file:///...\",\"httpLink\":null,\"title\":\"\",\"elapsed_ms\":234}"
     }
   ]
 }
@@ -96,28 +94,80 @@ Success response (MCP `CallToolResult`):
 
 The `text` payload is itself a JSON string. The LLM parses it. (We do not use MCP's `type: "json"` content block because not every client supports it yet.)
 
-Error response (MCP error):
+Failure response (MCP `CallToolResult` with `isError: true`):
 
 ```json
 {
   "isError": true,
   "content": [
-    { "type": "text", "text": "mermaid parse error: ..." }
+    {
+      "type": "text",
+      "text": "{\"code\":-32002,\"message\":\"mermaid parse error: Lexical error on line 3\",\"retryable\":false,\"elapsed_ms\":12}"
+    }
   ]
 }
 ```
 
-JSON-RPC-level errors (e.g. unknown method) use the standard JSON-RPC 2.0 error codes. We do not throw them in normal operation.
+### Error contract (R020 + S03 extension)
+
+| Inner `code` | retryable | Meaning |
+|---|---|---|
+| `-32602` | false | Invalid params — zod rejected the input shape (empty code, code > 200 KB, etc.). |
+| `-32001` | true | Render timeout — `mermaid.render()` didn't return within `MERMAID_RENDER_TIMEOUT_MS` (default 10s). |
+| `-32002` | false | Render failed — mermaid parse error. |
+| `-32003` | true | JSDOM init failed twice. |
+| `-32004` | true | Storage write failed (terminal error after no-retry or retry exhausted). |
+| `-32005` | true | Storage read timeout (5s). Distinct from the S02 NotFoundError which uses the same code with `retryable: false`. |
+| `-32008` | true | All candidate HTTP ports (5300/5301/5302) are in use. |
+| `-32009` | false | MCP protocol violation (unknown tool, missing arguments, etc.). |
+| `-32603` | false | Internal error — unclassified failure. |
+
+**Namespace disambiguation (CRITICAL):** the `code` field above is the INNER `CallToolResult` payload code, NOT the JSON-RPC envelope `error.code`. The two namespaces share a few numbers (most notably `-32602` — zod uses it in both layers, but the meaning is different) and the protocol is wired so an LLM client always reads the inner one for tool-failure diagnostics:
+
+```jsonc
+// JSON-RPC envelope (top-level `error.code`) — SDK-defined:
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": { "code": -32603, "message": "Internal error" }  // transport/SDK
+}
+
+// Inner CallToolResult payload (S03 application-level):
+{
+  "isError": true,
+  "content": [{
+    "type": "text",
+    "text": "{\"error\":{\"code\":-32002,\"message\":\"mermaid parse error: ...\",\"retryable\":false,\"elapsed_ms\":12}}"
+  }]
+}
+```
+
+The wire shape for the inner error is `{code, message, retryable, elapsed_ms}` (4 fields, stable insertion order). The `elapsed_ms` is the wall-clock ms of the tool call — always present, success and failure paths.
+
+JSON-RPC-level errors (e.g. unknown method) use the standard JSON-RPC 2.0 error codes. We do not throw them in normal operation. After the S03 wrapper change, un-tagged in-process failures (e.g. a handler throwing a plain `Error`) are classified via `classifyDomainError` and surface in the inner `CallToolResult` as code `-32603` instead of bubbling to a JSON-RPC envelope error.
 
 ## Logging
 
 All log output goes to `stderr`. `stdout` is reserved for the JSON-RPC stream — if you write to `stdout`, the client will see a parse error on the next message.
 
-Format:
+S03 (R008) format: one JSON object per line, with stable field order `{ts, level, event, code?, id?, ...rest}`. Example:
 
+```json
+{"ts":"2026-06-04T12:00:00.000Z","level":"info","event":"boot","version":"0.1.0","data":"./data","http":false,"stats":{"total":0,"pinned":0,"unpinned":0}}
+{"ts":"2026-06-04T12:00:00.123Z","level":"info","event":"tool_call","tool":"render_mermaid","status":"ok","elapsed_ms":234}
+{"ts":"2026-06-04T12:00:00.456Z","level":"info","event":"tool_call","tool":"render_mermaid","status":"error","code":-32002,"elapsed_ms":12,"retryable":false}
 ```
-[12:34:56][mermaid-renderer] v0.1.0 ready | data: ./data | http: off | stats: { total: 0, pinned: 0, unpinned: 0 }
-```
+
+| Field | Type | Description |
+|---|---|---|
+| `ts` | string (ISO 8601) | Always present. |
+| `level` | `"info"` \| `"warn"` \| `"error"` \| `"debug"` | Always present; defaults to `"info"`. |
+| `event` | string | Machine-readable event name. Always present. |
+| `code` | number | Optional. Present on tagged errors and on `tool_call` failures. |
+| `id` | string | Optional. Present when the log line refers to a specific diagram id. |
+| `...rest` | any | Event-specific extras (e.g. `host`, `port`, `tool`, `elapsed_ms`, `retryable`). |
+
+Log consumers (gsd-pi, log shippers, human `grep`) MUST tolerate any field being absent (except `ts`, `level`, `event`) — the `code` and `id` keys are emitted only when meaningful.
 
 ## Lifecycle
 
@@ -129,6 +179,8 @@ Format:
 6. Agent exits → SIGTERM is sent to the child → server drains for 3 s and exits.
 7. If the server crashes, the agent sees an EOF on stdout and reports the MCP failure.
 
+The hourly sweep `setInterval` is `unref()`'d (S03 MEM017) — it does not keep the event loop alive after stdio closes, so a graceful shutdown path doesn't have to escalate to SIGKILL. The test helper keeps a SIGTERM→SIGKILL escalation as defense-in-depth.
+
 There is no explicit "shutdown" message in MCP. We rely on SIGTERM.
 
 ## Protocol violations to watch for
@@ -136,3 +188,4 @@ There is no explicit "shutdown" message in MCP. We rely on SIGTERM.
 - Writing to `stdout` outside the JSON-RPC stream — fatal, breaks the client.
 - Long-running tool calls without progress reporting — MCP supports `progress` notifications but we do not use them. The render is < 2 s in practice; add progress if that ever changes.
 - Returning a non-`text` content block without verifying the client supports it.
+- Treating the JSON-RPC envelope `error.code` and the inner `CallToolResult` `code` as the same namespace — they are not. See "Namespace disambiguation" above.

@@ -168,6 +168,14 @@ export async function renderMermaid(args, ctx) {
 	const htmlPath = join(ctx.dataDir, "blobs", `${id}.html`);
 	await writeFile(htmlPath, html, "utf-8");
 	const warnings = maybeAsciiWarning(ascii);
+	// S03 (R010): increment ascii_failures whenever the ASCII conversion
+	// failed (best-effort — R025 says ASCII errors must not fail the
+	// render, but the operator still wants to know they happened). The
+	// counters arg is optional; absent → no-op (e.g. unit tests that
+	// build a bare ctx).
+	if (warnings.length > 0 && ctx.counters) {
+		await ctx.counters.increment("ascii_failures");
+	}
 	return {
 		id,
 		ascii,
@@ -374,6 +382,22 @@ export function registerTools(mcp, ctx) {
 		})),
 	}));
 
+	// S03 (R008/R009/R010) observability surface. All four are optional —
+	// if absent, the wrapper logs a one-time warning and continues without
+	// the observability hooks. The warning is intentionally ONE-TIME per
+	// process (a guard flag) so a long-lived server doesn't spam stderr
+	// if registerTools is somehow re-invoked.
+	const { counters, logger, recordError: recordErrorFn, setLastRenderMs: setLastRenderMsFn } = ctx || {};
+	const hasObservability = !!(counters || logger || recordErrorFn || setLastRenderMsFn);
+	let warnedMissing = false;
+	const warnMissing = () => {
+		if (warnedMissing) return;
+		warnedMissing = true;
+		if (logger) {
+			logger({ level: "warn", event: "observability_partial", note: "registerTools ctx missing some observability fields" });
+		}
+	};
+
 	mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
 		const { name, arguments: args } = req.params || {};
 		const tool = byName.get(name);
@@ -393,27 +417,74 @@ export function registerTools(mcp, ctx) {
 				],
 			};
 		}
+		if (!hasObservability) warnMissing();
 		const startNs = process.hrtime.bigint();
 		try {
 			const payload = await tool.run(args ?? {}, ctx);
 			const elapsed_ms = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+			// S03 (R008): structured log on every tool call (success path).
+			if (logger) {
+				logger({ event: "tool_call", tool: name, status: "ok", elapsed_ms });
+			}
+			// render_total is bumped ONLY for render_mermaid (per the S03
+			// spec — the 6 resource-management tools don't increment
+			// render_total; they have no dedicated counter in the current
+			// design).
+			if (counters && name === "render_mermaid") {
+				await counters.increment("render_total");
+			}
+			// ascii_failures is bumped by the renderMermaid handler itself
+			// when warnings.length > 0 (the handler has access to
+			// `warnings` and the counters arg via ctx). We don't bump it
+			// here because the warnings check lives at the handler layer.
+			// last_render_ms updates on every tool call (it's a wall-clock
+			// marker of the most recent attempt regardless of tool name).
+			if (setLastRenderMsFn) setLastRenderMsFn(elapsed_ms);
 			return { content: [{ type: "text", text: JSON.stringify({ ...payload, elapsed_ms }) }] };
 		} catch (e) {
-			if (e && typeof e === "object" && typeof e.code === "number") {
-				const elapsed_ms = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
-				const body = {
-					code: e.code,
-					message: String(e.message ?? e),
-					retryable: !!e.retryable,
-					elapsed_ms,
-				};
-				return {
-					isError: true,
-					content: [{ type: "text", text: JSON.stringify(body) }],
-				};
+			// S03 (R020): classify the failure into the inner-payload
+			// shape. classifyDomainError handles both:
+			//   1. tagged errors (carry .code) — preserved verbatim, so
+			//      the 9 existing eval tests' substring assertions on the
+			//      original message text still pass.
+			//   2. un-tagged errors (no .code) from the renderer's
+			//      throw sites — pattern-matched on 3 known prefixes
+			//      ("mermaid parse error:", "mermaid source too long",
+			//      "empty mermaid source") and mapped to the right inner
+			//      code (-32002, -32602, -32602). This is the path that
+			//      surfaces zod-style validation rejections and render
+			//      parse errors in the inner CallToolResult envelope
+			//      instead of as a JSON-RPC -32603 envelope error.
+			//   3. default — -32603 (InternalError), retryable: false.
+			const classified = classifyDomainError(e);
+			const elapsed_ms = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+			const body = {
+				code: classified.code,
+				message: classified.message,
+				retryable: classified.retryable,
+				elapsed_ms,
+			};
+			// S03 (R008): structured log on tagged failures.
+			if (logger) {
+				logger({ event: "tool_call", tool: name, status: "error", code: classified.code, elapsed_ms, retryable: classified.retryable });
 			}
-			// Unknown error: re-throw. The SDK converts it to JSON-RPC -32603.
-			throw e;
+			// render_errors bumps for any tool failure (per the S03
+			// spec — error counters track tagged failures uniformly
+			// across all 7 tools).
+			if (counters) {
+				await counters.increment("render_errors");
+			}
+			// Push to the 5-error ring so /health can show the most
+			// recent error codes with timestamps + retryable flags.
+			if (recordErrorFn) {
+				recordErrorFn({ code: classified.code, retryable: classified.retryable, message: classified.message });
+			}
+			// last_render_ms also updates on failure paths.
+			if (setLastRenderMsFn) setLastRenderMsFn(elapsed_ms);
+			return {
+				isError: true,
+				content: [{ type: "text", text: JSON.stringify(body) }],
+			};
 		}
 	});
 }

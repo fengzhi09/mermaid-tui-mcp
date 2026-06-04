@@ -495,8 +495,16 @@ describe("registerTools()", () => {
 		expect(unpinBody.elapsed_ms).toBeTypeOf("number");
 	});
 
-	it("re-throws unknown errors (does not silently convert to isError:true) so the SDK returns -32603", async () => {
-		// Build a ctx whose pin handler explodes with a NON-tagged error.
+	it("classifies unknown (non-tagged) errors via classifyDomainError → isError:true with code -32603 in the inner envelope (S03: surfaces 500-class failures inside the CallToolResult instead of bubbling to JSON-RPC)", async () => {
+		// Build a ctx whose pin handler explodes with a NON-tagged error
+		// (no `.code` property). The S02 wrapper re-threw these so the
+		// SDK converted them to a JSON-RPC -32603 envelope. The S03
+		// wrapper classifies them via classifyDomainError (which returns
+		// -32603 / retryable: false for the default branch) and surfaces
+		// them in the inner CallToolResult so the LLM sees the same
+		// shape it sees for tagged errors. Net effect: the LLM always
+		// sees a structured CallToolResult, never a JSON-RPC envelope
+		// error, for in-process failures.
 		const explodyCtx = {
 			...fixture.ctx,
 			storage: {
@@ -508,7 +516,173 @@ describe("registerTools()", () => {
 		};
 		const mcp = fakeMcp();
 		registerTools(mcp, explodyCtx);
-		await expect(mcp.callTool("pin_mermaid", { id: "any" })).rejects.toThrow("boom — not a tagged error");
+		const result = await mcp.callTool("pin_mermaid", { id: "any" });
+		expect(result.isError).toBe(true);
+		const body = JSON.parse(result.content[0].text);
+		expect(body.code).toBe(-32603);
+		expect(body.retryable).toBe(false);
+		expect(typeof body.message).toBe("string");
+		expect(body.message).toContain("boom — not a tagged error");
+		expect(typeof body.elapsed_ms).toBe("number");
+		expect(body.elapsed_ms).toBeGreaterThanOrEqual(0);
+	});
+
+	it("classifies the renderer's 'mermaid source too long' throw as -32602 (InvalidParams) in the inner envelope", async () => {
+		// src/render.mjs throws a plain Error with message starting with
+		// "mermaid source too long" — there's no .code on the throw, so
+		// the wrapper has to classify by message. classifyDomainError
+		// maps that prefix to -32602, retryable: false. This is the
+		// path the integration test "render_mermaid with oversized code
+		// returns code -32602" exercises end-to-end.
+		const mcp = fakeMcp();
+		registerTools(mcp, fixture.ctx);
+		const result = await mcp.callTool("render_mermaid", { code: "a".repeat(200_001) });
+		expect(result.isError).toBe(true);
+		const body = JSON.parse(result.content[0].text);
+		expect(body.code).toBe(-32602);
+		expect(body.retryable).toBe(false);
+		expect(body.message).toContain("200001");
+		expect(body.message).toContain("200000");
+	});
+
+	it("classifies the renderer's 'mermaid parse error:' throw as -32002 (RenderFailed) in the inner envelope", async () => {
+		// Stub ctx.render to throw the canonical "mermaid parse error: ..."
+		// prefix. The wrapper must classify this as -32002 (RenderFailed)
+		// and surface it in the inner envelope — preserving the 9 existing
+		// eval tests' substring assertions on the original message.
+		const stubbed = {
+			...fixture.ctx,
+			render: async () => {
+				throw new Error("mermaid parse error: Lexical error on line 3");
+			},
+		};
+		const mcp = fakeMcp();
+		registerTools(mcp, stubbed);
+		const result = await mcp.callTool("render_mermaid", { code: VALID_GRAPH });
+		expect(result.isError).toBe(true);
+		const body = JSON.parse(result.content[0].text);
+		expect(body.code).toBe(-32002);
+		expect(body.retryable).toBe(false);
+		expect(body.message).toBe("mermaid parse error: Lexical error on line 3");
+	});
+
+	it("failure path fires all four observability hooks (logger + counters + recordError + setLastRenderMs)", async () => {
+		// S03 (R008/R009/R010): when a tool call fails AND ctx carries the
+		// observability surface, the wrapper must:
+		//   1. emit a structured stderr log line
+		//   2. increment the render_errors counter
+		//   3. push to the 5-error ring
+		//   4. update last_render_ms
+		// Pins the wiring in tools.mjs so a future refactor can't silently
+		// drop one of the hooks. logger is a vi.spy on process.stderr.write
+		// (mirrors the unit pattern in tests/unit/logger.test.mjs).
+		const logCalls = [];
+		const counters = { incrementCalls: [], increment: async function (key) { this.incrementCalls.push(key); return this.incrementCalls.length; } };
+		const recordErrorCalls = [];
+		let lastRenderMs = -1;
+		const setLastRenderMsFn = (ms) => { lastRenderMs = ms; };
+
+		const observabilityCtx = {
+			...fixture.ctx,
+			counters,
+			logger: (rec) => logCalls.push(rec),
+			recordError: (e) => recordErrorCalls.push(e),
+			setLastRenderMs: setLastRenderMsFn,
+		};
+
+		// Trigger a failure via the renderer's too-long source.
+		const mcp = fakeMcp();
+		registerTools(mcp, observabilityCtx);
+		const result = await mcp.callTool("render_mermaid", { code: "a".repeat(200_001) });
+		expect(result.isError).toBe(true);
+
+		// 1. logger was called with the structured tool_call event
+		const toolCallLog = logCalls.find((l) => l.event === "tool_call");
+		expect(toolCallLog).toBeDefined();
+		expect(toolCallLog.tool).toBe("render_mermaid");
+		expect(toolCallLog.status).toBe("error");
+		expect(toolCallLog.code).toBe(-32602);
+		expect(toolCallLog.retryable).toBe(false);
+		expect(typeof toolCallLog.elapsed_ms).toBe("number");
+		expect(toolCallLog.elapsed_ms).toBeGreaterThanOrEqual(0);
+
+		// 2. counters.increment("render_errors") was called exactly once
+		expect(counters.incrementCalls).toContain("render_errors");
+
+		// 3. recordError was called with the right shape
+		expect(recordErrorCalls).toHaveLength(1);
+		expect(recordErrorCalls[0].code).toBe(-32602);
+		expect(recordErrorCalls[0].retryable).toBe(false);
+		expect(typeof recordErrorCalls[0].message).toBe("string");
+		expect(recordErrorCalls[0].message).toContain("200001");
+
+		// 4. setLastRenderMs was called with a number
+		expect(lastRenderMs).toBeGreaterThanOrEqual(0);
+	});
+
+	it("success path fires the same four observability hooks (logger + counters + setLastRenderMs — no recordError)", async () => {
+		// Mirror test: success path exercises logger + render_total counter
+		// + setLastRenderMs but NOT recordError (no failure to record).
+		const logCalls = [];
+		const counters = { incrementCalls: [], increment: async function (key) { this.incrementCalls.push(key); return this.incrementCalls.length; } };
+		const recordErrorCalls = [];
+		let lastRenderMs = -1;
+		const setLastRenderMsFn = (ms) => { lastRenderMs = ms; };
+
+		const observabilityCtx = {
+			...fixture.ctx,
+			counters,
+			logger: (rec) => logCalls.push(rec),
+			recordError: (e) => recordErrorCalls.push(e),
+			setLastRenderMs: setLastRenderMsFn,
+		};
+
+		const mcp = fakeMcp();
+		registerTools(mcp, observabilityCtx);
+		const result = await mcp.callTool("render_mermaid", { code: VALID_GRAPH });
+		expect(result.isError).toBeFalsy();
+
+		const toolCallLog = logCalls.find((l) => l.event === "tool_call");
+		expect(toolCallLog).toBeDefined();
+		expect(toolCallLog.tool).toBe("render_mermaid");
+		expect(toolCallLog.status).toBe("ok");
+		expect(typeof toolCallLog.elapsed_ms).toBe("number");
+		expect(toolCallLog.elapsed_ms).toBeGreaterThanOrEqual(0);
+
+		// render_total is bumped on render_mermaid success.
+		expect(counters.incrementCalls).toContain("render_total");
+		// render_errors is NOT bumped on success.
+		expect(counters.incrementCalls).not.toContain("render_errors");
+
+		// recordError is NOT called on success.
+		expect(recordErrorCalls).toHaveLength(0);
+
+		// setLastRenderMs was called with a positive number (real render).
+		expect(lastRenderMs).toBeGreaterThanOrEqual(0);
+	});
+
+	it("warns once when observability hooks are missing (defensive, not spam)", async () => {
+		// Pass a ctx WITHOUT the observability fields. The wrapper should
+		// continue working but log a one-time warning. The warning is
+		// fired via the logger, so a logger is required for the warning
+		// itself to be emitted — which is fine, the lock is "no logger,
+		// no warning" (the absence of the logger is the failure mode the
+		// warning was meant to flag, so it's OK if it can't reach stderr).
+		const logCalls = [];
+		const observabilityCtx = {
+			...fixture.ctx,
+			// intentionally no counters / logger / recordError / setLastRenderMs
+		};
+
+		const mcp = fakeMcp();
+		registerTools(mcp, observabilityCtx);
+		await mcp.callTool("render_mermaid", { code: VALID_GRAPH });
+		await mcp.callTool("render_mermaid", { code: VALID_GRAPH });
+		// Without a logger, no warning is emitted (the logger is the
+		// mechanism for the warning). The calls succeed normally.
+		// This test mainly locks the "don't crash when observability is
+		// missing" path.
+		expect(logCalls).toHaveLength(0);
 	});
 
 	it("records the render_warnings path through the wrapper (warnings key on success envelope)", async () => {

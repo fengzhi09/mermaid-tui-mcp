@@ -12,12 +12,13 @@
 //   GET  /view?id=<id>            static HTML viewer (file:// works too)
 //   POST /pin?id=<id>&pin=true    flip pin flag
 //   GET  /raw/svg?id=<id>         raw SVG body
-//   GET  /health                  { status, version, total, pinned, unpinned }
+//   GET  /health                  { status, version, ..., counters, last_render_ms, last_errors }
 //
 // Storage is shared across modes:
 //   <data>/store.json                # { id -> { code, createdAt, pinned, lastAccessedAt, sourceLength } }
 //   <data>/blobs/<id>.svg            # rendered SVG
 //   <data>/blobs/<id>.html           # self-contained viewer (works on file://)
+//   <data>/counters.json             # persistent monotonic counters (R010)
 //
 // Sweep policy: 7 days since createdAt AND !pinned => delete. Run on load,
 // on every put, and every hour.
@@ -33,6 +34,9 @@ import { render } from "./render.mjs";
 import { LocalFsStorage as Storage, TTL_DAYS } from "./storage/LocalFsStorage.mjs";
 import { renderView, extractSvgBody, escapeHtml, fileUrlFor, httpError, log } from "./helpers.mjs";
 import { registerTools } from "./tools.mjs";
+import { Counters } from "./counters.mjs";
+import { tryListen } from "./port-fallback.mjs";
+import { recordError, setLastRenderMs, snapshot as healthSnapshot } from "./health-state.mjs";
 
 export { renderView } from "./helpers.mjs";
 export { extractSvgBody } from "./helpers.mjs";
@@ -57,19 +61,34 @@ const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 // "oss" (stub) are recognised; "oss" logs a stderr line and falls through to
 // LocalFsStorage — the actual OSS impl lands in M002.
 const BACKEND = process.env.MERMAID_RENDERER_BACKEND;
+
+// S03 (R010): persistent monotonic counters — the 6-key set the /health
+// surface reads, persisted to <root>/counters.json via tmp+rename. Loaded
+// synchronously here so the first tool call after boot sees the persisted
+// state. The Counters instance is passed to LocalFsStorage so sweep +
+// write-retry paths can increment, and to registerTools via ctx so the
+// wrapper can bump render_total / render_errors / ascii_failures.
+const counters = new Counters(DATA);
+await counters.load();
+
 let storage;
 if (BACKEND === "oss") {
 	log({ level: "warn", event: "backend_stub", backend: "oss" });
-	storage = new Storage(DATA);
+	storage = new Storage(DATA, { counters, logger: log });
 } else {
 	// "local" or unset — default
-	storage = new Storage(DATA);
+	storage = new Storage(DATA, { counters, logger: log });
 }
 await storage.load();
 
+// Hourly sweep — .unref() keeps the setInterval from holding the event
+// loop open after stdio closes (MEM017). The previous band-aid was a
+// SIGTERM→SIGKILL escalation in tests/helpers/server.mjs; the proper
+// fix is to make the interval not keep the loop alive. The unref'd
+// setTimeout in the SIGTERM handler below does the same for shutdown.
 setInterval(() => {
 	storage.sweep().catch((e) => log({ level: "error", event: "sweep_error", error: String(e?.message || e) }));
-}, 60 * 60 * 1000);
+}, 60 * 60 * 1000).unref();
 
 // ============================================================================
 // MCP stdio server
@@ -84,6 +103,12 @@ const mcp = new McpServer(
 // list_diagrams + get_diagram + delete_mermaid + search_diagrams) through the
 // single seam in src/tools.mjs. The wrapper enforces the R020 envelope and
 // adds elapsed_ms; per-tool handlers + their zod schemas live alongside it.
+//
+// S03 (R008/R009/R010): the wrapper also emits a structured stderr JSON
+// log on every tool call (success + failure), increments the matching
+// counter, and pushes tagged failures into the 5-error ring + last_render_ms
+// state exposed by /health. All four are optional in the wrapper — if
+// absent the wrapper continues without the observability surface.
 registerTools(mcp, {
 	storage,
 	render,
@@ -92,6 +117,10 @@ registerTools(mcp, {
 	httpEnabled: HTTP_ENABLED,
 	httpHost: HTTP_HOST,
 	httpPort: HTTP_PORT,
+	counters,
+	logger: log,
+	recordError,
+	setLastRenderMs,
 });
 
 const transport = new StdioServerTransport();
@@ -150,12 +179,22 @@ if (HTTP_ENABLED) {
 			}
 			if (req.method === "GET" && url.pathname === "/health") {
 				setCors();
+				// S03 (R009) extension: merge counters.snapshot() and the
+				// health-state snapshot into the existing /health shape.
+				// The full response is now:
+				//   {status, version, uptimeSec, ttlDays, total, pinned, unpinned,
+				//    counters, last_render_ms, last_errors}
+				// last_errors is always an array (possibly empty) per the
+				// S03 research decision. counters is always an object with
+				// the 6 documented keys (0-defaulted if unused).
 				return json(res, 200, {
 					status: "ok",
 					version: VERSION,
 					uptimeSec: Math.round((Date.now() - startedAt) / 1000),
 					ttlDays: TTL_DAYS,
 					...storage.stats(),
+					counters: counters.snapshot(),
+					...healthSnapshot(),
 				});
 			}
 			setCors();
@@ -167,9 +206,23 @@ if (HTTP_ENABLED) {
 			return json(res, status, { error: e?.message || String(e) });
 		}
 	});
-	httpServer.listen(HTTP_PORT, HTTP_HOST, () => {
-		log({ event: "http_listening", host: HTTP_HOST, port: HTTP_PORT });
-	});
+	// R016: try 5300 → 5301 → 5302. If all three are in use, the helper
+	// throws PortInUseError — we log a structured `http_listen_failed`
+	// event and exit(1) so the operator sees the failure in the daemon
+	// launcher (or the parent process tree) instead of the silent
+	// "this just hung on port 5300" failure mode. The tryListen helper
+	// logs a `port_in_use` event for each candidate it skips, so a
+	// follow-up log trail shows the full fallback attempt.
+	tryListen(httpServer, HTTP_HOST, [HTTP_PORT, HTTP_PORT + 1, HTTP_PORT + 2])
+		.then((port) => {
+			// Override HTTP_PORT in the listening log so the operator sees
+			// the actual bound port, not the originally requested one.
+			log({ event: "http_listening", host: HTTP_HOST, port });
+		})
+		.catch((e) => {
+			log({ level: "error", event: "http_listen_failed", error: String(e?.message || e), port: HTTP_PORT });
+			process.exit(1);
+		});
 }
 
 // ============================================================================
@@ -188,7 +241,10 @@ function json(res, status, body) {
 
 log({ event: "boot", version: VERSION, data: DATA, http: HTTP_ENABLED, stats: storage.stats() });
 
-// Graceful shutdown — let in-flight renders finish, then exit.
+// Graceful shutdown — let in-flight renders finish, then exit. The
+// setTimeout is unref'd so it doesn't hold the loop open if stdio
+// has already closed (the SIGTERM handler in the test helper still
+// escalates SIGTERM→SIGKILL as defense-in-depth).
 for (const sig of ["SIGINT", "SIGTERM"]) {
 	process.on(sig, () => {
 		log({ event: "shutdown", signal: sig });

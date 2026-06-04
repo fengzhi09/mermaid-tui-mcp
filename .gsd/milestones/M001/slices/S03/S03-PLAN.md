@@ -52,17 +52,17 @@ What remains before M001 is end-to-end usable: S04 owns the real Claude Code + g
   - Files: `src/errors.mjs`, `tests/unit/errors.test.mjs`, `src/tools.mjs`
   - Verify: npm test -- tests/unit/errors.test.mjs
 
-- [ ] **T03: Add render timeout, jsdom init retry, and test seams to render.mjs** `est:90m`
+- [x] **T03: Add render timeout, jsdom init retry, and test seams to render.mjs** `est:90m`
   Why: R015 requires a 10s render timeout (MERMAID_RENDER_TIMEOUT_MS env, default 10000) that throws RenderTimeoutError (-32001) on expiry. R018 requires a 1x retry of getMermaid() init — if jsdom init fails on the first try, retry once; if it still fails, throw JsdomInitError (-32003). Both retry paths need deterministic test seams so the unit tests can hit the failure paths without flaky timing — mermaid 11 renders are usually < 2s, so a 1ms timeout on a real render is unreliable; the test seam lets the test inject a never-resolving promise to force the timeout. The 3 existing throw sites (empty source, oversize, parse error) stay as raw `throw new Error(...)` and are classified in errors.mjs (per T02's classifyDomainError); this preserves the 9 existing eval tests' message-substring assertions.
   - Files: `src/render.mjs`, `tests/unit/render.test.mjs`
   - Verify: npm test -- tests/unit/render.test.mjs
 
-- [ ] **T04: Add write retry, read timeout, atomic save, sweep counters, and MEM024 id projection to LocalFsStorage** `est:90m`
+- [x] **T04: Add write retry, read timeout, atomic save, sweep counters, and MEM024 id projection to LocalFsStorage** `est:90m`
   Why: R017 requires writeFile to retry once on transient errors (EAGAIN, EWOULDBLOCK) and throw StorageWriteError (-32004, retryable: true) on terminal errors (ENOSPC, EACCES) or after retry exhaustion. R005's readFile side requires a 5s read timeout that throws StorageReadError (-32005, retryable: true) on expiry. R010 requires the counter increment surface to be present in sweep() (sweep_runs + sweep_removed). MEM024 is a real S02 surface gap that LLM clients hit immediately: list_diagrams and search_diagrams return items without the `id` field, so an LLM client cannot pin/get/delete any item by reference — the only stable identifier is the map key, dropped in `LocalFsStorage.list()` and `.search()`. S03 closes this by projecting `{id, ...e}` in both methods. The Backend.mjs JSDoc typedefs for ListResult.items and SearchResult.items must be updated to include `id: string` in the projection.
   - Files: `src/storage/LocalFsStorage.mjs`, `src/storage/Backend.mjs`, `tests/unit/storage.test.mjs`
   - Verify: npm test -- tests/unit/storage.test.mjs
 
-- [ ] **T05: Wire logger/counters/errors into server.mjs, add port fallback + health-state, extend /health, unref sweep, extend integration tests** `est:120m`
+- [x] **T05: Wire logger/counters/errors into server.mjs, add port fallback + health-state, extend /health, unref sweep, extend integration tests** `est:120m`
   Why: This is the integration task. T01-T04 ship the pure modules and per-component modifications; T05 wires them all together in server.mjs, extends /health with the S03 observability surface (R009), adds the HTTP port fallback (R016) via a new src/port-fallback.mjs helper, adds the 5-error ring + last_render_ms via a new src/health-state.mjs module, unrefs the sweep setInterval (MEM017 — the S01 test helper's SIGTERM→SIGKILL escalation is a band-aid; the proper fix is to unref the interval), extends the 2 integration test files with the new observability assertions, and updates the 2 docs files (api.md, mcp-protocol.md). After T05 the full S03 surface is live: stderr JSON logs, data/counters.json, /health metrics, 3 retry paths, port fallback, MEM024 closed, MEM017 fixed.
   - Files: `src/port-fallback.mjs`, `src/health-state.mjs`, `tests/unit/port-fallback.test.mjs`, `tests/unit/health-state.test.mjs`, `src/server.mjs`, `src/tools.mjs`, `tests/integration/http.test.mjs`, `tests/integration/stdio-mcp.test.mjs`, `docs/api.md`, `docs/mcp-protocol.md`
   - Verify: npm test

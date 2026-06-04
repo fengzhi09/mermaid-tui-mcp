@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T05",
+  "unitId": "M001/S03/T05",
+  "timestamp": 1780575212139,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "durationMs": 31472,
+      "verdict": "pass"
+    }
+  ]
+}
