@@ -11,7 +11,10 @@
   "scripts": {
     "start": "node src/server.mjs",
     "start:http": "MERMAID_RENDERER_HTTP=1 node src/server.mjs",
-    "dev": "node --watch src/server.mjs"
+    "dev": "node --watch src/server.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -26,7 +29,13 @@
     "_comment": "Documented for /gsd mcp init reference; user copies into .gsd/mcp.json or ~/.gsd/mcp.json",
     "gsd-mermaid": {
       "command": "node",
-      "args": ["${workspaceFolder}/src/server.mjs"]
+      "args": [
+        "${workspaceFolder}/src/server.mjs"
+      ]
     }
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.6",
+    "vitest": "^3.2.6"
   }
 }

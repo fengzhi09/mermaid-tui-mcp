@@ -191,7 +191,7 @@ if (HTTP_ENABLED) {
 // Helpers
 // ============================================================================
 
-async function renderView(id, entry, svg, withPinButton = false) {
+export async function renderView(id, entry, svg, withPinButton = false) {
 	const tmpl = await readFile(join(PUBLIC_DIR, "view.html"), "utf-8");
 	return tmpl
 		.replace(/\{\{ID\}\}/g, escapeHtml(id))
@@ -204,16 +204,16 @@ async function renderView(id, entry, svg, withPinButton = false) {
 		.replace(/\{\{WITH_PIN\}\}/g, withPinButton ? "true" : "false");
 }
 
-function extractSvgBody(svg) {
+export function extractSvgBody(svg) {
 	const m = svg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/);
 	return m ? m[1] : "";
 }
 
-function escapeHtml(s) {
+export function escapeHtml(s) {
 	return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-function fileUrlFor(p) {
+export function fileUrlFor(p) {
 	// Cross-platform file URL. on windows: C:\foo\bar.svg -> file:///C:/foo/bar.svg
 	const abs = p.replace(/\\/g, "/");
 	return `file:///${abs.startsWith("/") ? abs.slice(1) : abs}`;
@@ -224,7 +224,7 @@ function json(res, status, body) {
 	res.end(JSON.stringify(body));
 }
 
-function httpError(status, msg) {
+export function httpError(status, msg) {
 	const e = new Error(msg);
 	e.status = status;
 	return e;
@@ -232,7 +232,7 @@ function httpError(status, msg) {
 
 // All logging MUST go to stderr in stdio MCP mode (stdout is reserved for the
 // JSON-RPC protocol). In HTTP mode stderr is fine too — log file if needed.
-function log(...args) {
+export function log(...args) {
 	const ts = new Date().toISOString().slice(11, 19);
 	console.error(`[${ts}][mermaid-renderer]`, ...args);
 }
