@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mermaid {{ID}}</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f9fafb; color: #111827; }
+    .topbar { position: sticky; top: 0; z-index: 10; background: #1f2937; color: #f9fafb; padding: 10px 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .topbar h1 { margin: 0; font-size: 13px; font-weight: 500; }
+    .topbar .id { font-family: ui-monospace, SFMono-Regular, "SF Mono", monospace; background: #111827; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .topbar .meta { color: #9ca3af; font-size: 12px; }
+    .topbar button { background: #374151; color: #f9fafb; border: 0; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.15s; }
+    .topbar button:hover { background: #4b5563; }
+    .topbar button.active { background: #f59e0b; color: #1f2937; }
+    .topbar .spacer { flex: 1; }
+    .stage-wrap { padding: 24px; }
+    .stage { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; overflow: hidden; min-height: 240px; display: flex; justify-content: center; align-items: center; user-select: none; }
+    .stage.pannable { cursor: grab; }
+    .stage.pannable:active { cursor: grabbing; }
+    #mermaid-svg { max-width: 100%; height: auto; transform-origin: center; transition: transform 0.08s ease-out; }
+    .zoom-controls { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
+    .zoom-controls button { width: 44px; height: 44px; border-radius: 50%; background: #1f2937; color: #f9fafb; border: 0; cursor: pointer; font-size: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .zoom-controls button:hover { background: #374151; }
+    .meta-line { padding: 4px 24px 16px; color: #6b7280; font-size: 12px; }
+    .code-block { background: #1f2937; color: #d1d5db; border-radius: 8px; padding: 16px 20px; margin: 0 24px 32px; font-family: ui-monospace, SFMono-Regular, "SF Mono", monospace; font-size: 12px; white-space: pre; overflow: auto; line-height: 1.5; }
+    .pin-badge { color: #f59e0b; }
+    .empty-msg { color: #6b7280; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="id">{{ID}}</span>
+    <span class="meta">created {{CREATED_AT}}</span>
+    <span class="meta">{{SOURCE_LENGTH}} chars</span>
+    <span id="pin-badge"></span>
+    <span class="spacer"></span>
+    <button id="pin-btn" data-show-when="with-pin">pin</button>
+    <button id="zoom-out">−</button>
+    <button id="zoom-reset">⊕</button>
+    <button id="zoom-in">+</button>
+    <button id="copy-link">copy link</button>
+    <button id="download-svg">SVG</button>
+    <button id="download-png">PNG</button>
+  </div>
+  <div class="meta-line">drag to pan, scroll to zoom, double-click to reset</div>
+  <div class="stage-wrap">
+    <div class="stage pannable" id="stage">
+      <svg id="mermaid-svg" xmlns="http://www.w3.org/2000/svg" viewBox="">{{SVG_BODY}}</svg>
+    </div>
+  </div>
+  <pre class="code-block" id="code">{{CODE}}</pre>
+
+  <div class="zoom-controls">
+    <button id="z-in" title="zoom in">+</button>
+    <button id="z-out" title="zoom out">−</button>
+    <button id="z-reset" title="reset">⊕</button>
+  </div>
+
+  <script>
+    const ID = {{ID_JSON}};
+    const svg = document.getElementById('mermaid-svg');
+    const stage = document.getElementById('stage');
+    const pinBtn = document.getElementById('pin-btn');
+    const pinBadge = document.getElementById('pin-badge');
+
+    // ---- zoom & pan ----
+    let scale = 1, panX = 0, panY = 0;
+    let panning = false, panStartX = 0, panStartY = 0;
+
+    function applyTransform() {
+      svg.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    }
+    function zoomBy(factor, cx, cy) {
+      const next = Math.max(0.2, Math.min(8, scale * factor));
+      if (next === scale) return;
+      if (cx !== undefined && cy !== undefined) {
+        const rect = stage.getBoundingClientRect();
+        const ox = cx - rect.left - rect.width / 2 - panX;
+        const oy = cy - rect.top - rect.height / 2 - panY;
+        panX -= ox * (next / scale - 1);
+        panY -= oy * (next / scale - 1);
+      }
+      scale = next;
+      applyTransform();
+    }
+    function reset() { scale = 1; panX = 0; panY = 0; applyTransform(); }
+
+    document.getElementById('zoom-in').onclick = () => zoomBy(1.25);
+    document.getElementById('zoom-out').onclick = () => zoomBy(0.8);
+    document.getElementById('z-in').onclick = () => zoomBy(1.25);
+    document.getElementById('z-out').onclick = () => zoomBy(0.8);
+    document.getElementById('zoom-reset').onclick = reset;
+    document.getElementById('z-reset').onclick = reset;
+
+    stage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomBy(e.deltaY > 0 ? 0.9 : 1.1, e.clientX, e.clientY);
+    }, { passive: false });
+    stage.addEventListener('mousedown', (e) => {
+      panning = true;
+      panStartX = e.clientX - panX;
+      panStartY = e.clientY - panY;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!panning) return;
+      panX = e.clientX - panStartX;
+      panY = e.clientY - panStartY;
+      applyTransform();
+    });
+    window.addEventListener('mouseup', () => { panning = false; });
+    stage.addEventListener('dblclick', reset);
+
+    // ---- pin (only when viewer is served from HTTP, not file://) ----
+    const WITH_PIN = {{WITH_PIN}};
+    if (!WITH_PIN) {
+      pinBtn.style.display = 'none';
+    }
+    let pinned = {{PINNED}};
+    function refreshPinUi() {
+      pinBtn.classList.toggle('active', pinned);
+      pinBtn.textContent = pinned ? 'pinned' : 'pin';
+      pinBadge.textContent = pinned ? '★ pinned (long-term)' : '';
+      pinBadge.className = pinned ? 'pin-badge' : '';
+    }
+    pinBtn.onclick = async () => {
+      const next = !pinned;
+      const resp = await fetch('/pin?id=' + encodeURIComponent(ID) + '&pin=' + next, { method: 'POST' });
+      if (resp.ok) { pinned = next; refreshPinUi(); }
+    };
+    refreshPinUi();
+
+    // ---- copy link ----
+    document.getElementById('copy-link').onclick = async () => {
+      const url = location.origin + location.pathname + '?id=' + ID;
+      try { await navigator.clipboard.writeText(url); document.getElementById('copy-link').textContent = 'copied!'; setTimeout(() => document.getElementById('copy-link').textContent = 'copy link', 1500); } catch {}
+    };
+
+    // ---- downloads ----
+    document.getElementById('download-svg').onclick = () => {
+      const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+      triggerDownload(blob, ID + '.svg');
+    };
+    document.getElementById('download-png').onclick = () => {
+      const xml = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => {
+        const vb = svg.viewBox.baseVal;
+        const w = vb && vb.width ? vb.width : svg.clientWidth;
+        const h = vb && vb.height ? vb.height : svg.clientHeight;
+        const ratio = window.devicePixelRatio || 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = w * ratio;
+        canvas.height = h * ratio;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => { triggerDownload(blob, ID + '.png'); URL.revokeObjectURL(url); }, 'image/png');
+      };
+      img.onerror = () => URL.revokeObjectURL(url);
+      img.src = url;
+    };
+    function triggerDownload(blob, name) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // ---- view page can be asked to auto-render to PNG (used by /raw/png 302) ----
+    const params = new URLSearchParams(location.search);
+    if (params.get('as') === 'png') {
+      setTimeout(() => document.getElementById('download-png').click(), 200);
+    }
+  </script>
+</body>
+</html>

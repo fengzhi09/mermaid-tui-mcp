@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<evals>
+  <eval id="1">
+    <question>Show me a flowchart of the TCP three-way handshake.</question>
+    <expected>The assistant calls render_mermaid({code: "sequenceDiagram\n..." or a flowchart variant}), then pastes the ASCII art into the reply and prints the fileLink so the user can open a full-rendered version.</expected>
+  </eval>
+  <eval id="2">
+    <question>I need to compare three auth flows: OAuth2 authorization-code, OAuth2 client-credentials, and OIDC implicit. Render a single Mermaid diagram showing all three side by side.</question>
+    <expected>The assistant calls render_mermaid once (not three times) with a single diagram that contains all three flows. After the ASCII + fileLink are returned, the assistant presents them as the answer.</expected>
+  </eval>
+  <eval id="3">
+    <question>Plot a Gantt chart for a 2-week sprint: design (2d), implementation (5d), review (2d), bug fixing (3d), deploy (1d). Use Mermaid.</question>
+    <expected>The assistant calls render_mermaid({code: "gantt\n..."}) successfully. Mermaid 11 fully supports gantt, so the response is non-empty ASCII and a working fileLink.</expected>
+  </eval>
+  <eval id="4">
+    <question>Render this Mermaid: graph TD\n  A[Start] --&gt;|wrong syntax here| B</question>
+    <expected>Mermaid rejects the input. The tool returns isError=true with "mermaid parse error: ..." and the assistant shows the error to the user, suggests a fix (e.g. "missing `&gt;` for arrow direction, or use `A--&gt;|label|B`"), and either retries with the fix or asks the user to confirm the corrected diagram.</expected>
+  </eval>
+  <eval id="5">
+    <question>First, render the diagram "graph TD\n  A--&gt;B". Then, while explaining, the assistant needs to add a node C between A and B. Use a second render to show the updated diagram.</question>
+    <expected>Two render_mermaid calls. The second call's id is different from the first. The assistant explicitly tells the user that this is the updated version (different fileLink).</expected>
+  </eval>
+  <eval id="6">
+    <question>Render an ER diagram with 5 entities: User, Order, Product, Category, Address. The relationships: User places Orders, Orders contain Products, Products belong to Categories, Users have Addresses.</question>
+    <expected>The assistant calls render_mermaid with an erDiagram source. The ASCII may be rough (erDiagram support in mermaid-ascii is best-effort) but the fileLink is always available and renders the diagram correctly in a browser.</expected>
+  </eval>
+  <eval id="7">
+    <question>Try to render a 250 KB Mermaid source. (The user pastes a very long script.)</question>
+    <expected>The tool rejects the input with "mermaid source too long (X chars, max 200000)". The assistant tells the user the size limit and asks for a smaller diagram or suggests splitting it.</expected>
+  </eval>
+  <eval id="8">
+    <question>The user says "draw anything" without specifying a diagram type. Render something useful.</question>
+    <expected>The assistant picks a reasonable default (typically a small system architecture flowchart) and renders it. This tests the tool description's hint to "use ascii" — the assistant doesn't try to interpret the request as "render literally anything" (which would loop on infinite possibilities).</expected>
+  </eval>
+  <eval id="9">
+    <question>Pin the diagram we just rendered (id=mabc123) so it doesn't get cleaned up after 7 days.</question>
+    <expected>This is HTTP-only. The stdio MCP path does not expose a pin tool. The assistant tells the user that pinning requires the standalone HTTP daemon (`bin/start.sh`) and that the fileLink still works in the meantime. If the daemon is running, the assistant explains how to use the view page's pin button (or calls the HTTP /pin endpoint via exec).</expected>
+  </eval>
+  <eval id="10">
+    <question>The user wants the file:// link to work on macOS. The current path is "C:/Users/.../data/blobs/mabc.html". Will it open?</question>
+    <expected>fileLink paths are platform-correct (we generate `file:///` with forward slashes). The assistant (or this test) should confirm the path matches the host's filesystem — on macOS the path would start with `/Users/...`, on Linux with `/home/...`, on Windows with `C:/...`. The assistant adjusts the user-facing message to the current OS if needed.</expected>
+  </eval>
+</evals>
