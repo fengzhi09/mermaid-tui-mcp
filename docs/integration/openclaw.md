@@ -52,6 +52,17 @@ This is fragile (no 7-day storage, no pin, no HTTP viewer) but it unblocks the b
 
 Star and watch [openclaw/openclaw#29053](https://github.com/openclaw/openclaw/issues/29053). When native support lands, follow the gsd-pi / Claude Code / opencode / Hermes integration docs (one block in `~/.openclaw/config.*` or similar — TBD when the feature ships).
 
+## v0.2.0 tool set & stdio-only tools (important for OpenClaw workarounds)
+
+The `mermaid` server exposes **7 stdio MCP tools** (v0.2.0 surface): `render_mermaid`, `pin_mermaid`, `unpin_mermaid`, `get_diagram`, `list_diagrams`, `search_diagrams`, `delete_mermaid`.
+
+**6 of the 7 tools are stdio-MCP-only** and have no HTTP or CLI surface: `pin_mermaid`, `unpin_mermaid`, `get_diagram`, `list_diagrams`, `search_diagrams`, `delete_mermaid`. Only `render_mermaid` is reachable through the workaround paths above (`node src/render.mjs` direct call, or the HTTP `/raw/svg` / `/view` / `/pin` endpoints for the post-render file/pin side effects).
+
+**Practical implication for OpenClaw:**
+
+- Workaround 1 (HTTP-standalone) and Workaround 2 (`node src/render.mjs` direct) give you **rendering only**. Pinning, listing, searching, getting metadata, and explicit deletion are not reachable from OpenClaw in v0.2.0.
+- If you need the full 7-tool CRUD lifecycle from inside OpenClaw, you must either wait for native MCP (Workaround 3) or pair OpenClaw with a second MCP-capable agent (Claude Code, gsd-pi, opencode, Hermes) and have that agent run the CRUD tools on OpenClaw's behalf.
+
 ## Recommendation
 
 If you have a choice of agent and want the polished experience, use gsd-pi, Claude Code, opencode, or Hermes — all of which have working MCP client support today. OpenClaw is best reserved for tasks that don't need MCP yet.

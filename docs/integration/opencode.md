@@ -42,6 +42,10 @@
 
 The `command` is an array (argv). The first element is the executable, the rest are arguments. No shell is involved, so paths with spaces do not need quoting.
 
+## v0.2.0 tool set
+
+The `mermaid` server exposes **7 stdio MCP tools** (v0.2.0 surface): `render_mermaid`, `pin_mermaid`, `unpin_mermaid`, `get_diagram`, `list_diagrams`, `search_diagrams`, `delete_mermaid`. The LLM calls `render_mermaid` first for any new diagram, then uses the other 6 tools for the CRUD lifecycle.
+
 ## Verifying
 
 In an opencode session:
@@ -50,7 +54,7 @@ In an opencode session:
 /mcp
 ```
 
-The `mermaid` server should be listed. Its `render_mermaid` tool becomes available to the LLM.
+The `mermaid` server should be listed. All 7 of its tools become available to the LLM.
 
 ## Notes
 

@@ -42,6 +42,22 @@ Project-scoped servers are typically committed to the repo so every contributor 
 
 Claude Code asks for approval the first time a stdio MCP server is added. After approval, the tool is available in every session that loads the same config.
 
+## v0.2.0 tool set
+
+The `mermaid` server exposes **7 stdio MCP tools** (v0.2.0 surface):
+
+| Tool | Purpose |
+|------|---------|
+| `render_mermaid` | Render a diagram; returns `{id, ascii, fileLink, httpLink, title, elapsed_ms, warnings}`. |
+| `pin_mermaid` | Protect a diagram from the 7-day sweep. |
+| `unpin_mermaid` | Remove pin protection. |
+| `get_diagram` | Fetch the full stored entry (code, title, pinned, timestamps). |
+| `list_diagrams` | Paginated list (each item carries `id`, `title`, `pinned`). |
+| `search_diagrams` | Substring match on title (boosted) and code. |
+| `delete_mermaid` | Explicit remove. |
+
+The LLM still calls `render_mermaid` first for any new diagram, then uses the other 6 tools for the CRUD lifecycle.
+
 ## Verifying
 
 Inside Claude Code:
@@ -50,7 +66,7 @@ Inside Claude Code:
 /mcp
 ```
 
-Should list `mermaid` and its tools (currently `render_mermaid`). Then:
+Should list `mermaid` and all 7 of its tools. Then:
 
 > Render a Mermaid sequence diagram showing OAuth2 authorization-code flow: client → auth server → resource server.
 

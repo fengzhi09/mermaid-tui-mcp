@@ -48,6 +48,10 @@ Replace the path with wherever you cloned `mermaid-tui-mcp`. Use forward slashes
 }
 ```
 
+## v0.2.0 tool set
+
+The `mermaid` server exposes **7 stdio MCP tools** (v0.2.0 surface): `render_mermaid`, `pin_mermaid`, `unpin_mermaid`, `get_diagram`, `list_diagrams`, `search_diagrams`, `delete_mermaid`. The LLM calls `render_mermaid` first for any new diagram, then uses the other 6 tools for the CRUD lifecycle (pin/unpin, get, list, search, delete).
+
 ## First run
 
 The first time gsd-pi sees the entry, it will prompt:
@@ -58,7 +62,7 @@ The first time gsd-pi sees the entry, it will prompt:
 >
 > Only approve MCP servers you trust.
 
-Approve. After that, the `render_mermaid` tool is available in every gsd-pi session for the lifetime of the trust entry.
+Approve. After that, all 7 tools are available in every gsd-pi session for the lifetime of the trust entry.
 
 ## Verifying
 
