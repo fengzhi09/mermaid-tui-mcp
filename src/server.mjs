@@ -49,7 +49,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const DATA = process.env.MERMAID_RENDERER_DATA || join(ROOT, "data");
 const PUBLIC_DIR = join(ROOT, "public");
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const startedAt = Date.now();
 
 const HTTP_ENABLED = process.env.MERMAID_RENDERER_HTTP === "1";

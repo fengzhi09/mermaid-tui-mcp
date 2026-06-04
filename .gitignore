@@ -31,6 +31,7 @@ coverage/
 *.tgz
 
 # ── GSD baseline (auto-generated) ──
+.gsd
 .gsd-id
 .mcp.json
 .bg-shell/
