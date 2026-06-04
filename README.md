@@ -123,6 +123,19 @@ npm run start:http   # HTTP-standalone for browser testing
 npx @modelcontextprotocol/inspector node src/server.mjs
 ```
 
+## Testing
+
+Run the test suite with `npm test`. Get a coverage report with `npm run test:coverage` (target: **≥80% lines**, enforced by `vitest.config.mjs`).
+
+The harness is split into three layers, each in its own folder under `tests/`:
+
+- **Unit tests** (`tests/unit/`) — pure modules in isolation: `storage.mjs`, `render.mjs`, and the helpers extracted from `server.mjs` into `helpers.mjs`. Fast, no child process, no network.
+- **Integration tests** (`tests/integration/`) — spawn the real `src/server.mjs` as a child process and drive it over stdio JSON-RPC (the MCP transport) and the local HTTP routes (`/health`, `/raw/svg`, `/pin`, `/view`). The helper at `tests/helpers/server.mjs` re-implements the JSON-RPC driver from `scripts/smoke.sh` in JS so the suite stays parallelizable.
+- **Eval tests** (`tests/evals/`) — one file per entry in `evals.xml` (`eval-01` … `eval-10`). Each test asserts the contract declared in the corresponding `<expected>` block. `eval-09` is currently `it.todo` (a TDD placeholder for S02's `pin_mermaid` tool) — the other nine are real assertions that pass against the v0.1.0 surface.
+- **CI** — every push and pull request to `main` / `master` / `milestone/*` runs `npm test` on **Node 22 and Node 24** in parallel via `.github/workflows/ci.yml`. The coverage threshold is enforced on the Node 24 leg, and the `coverage/` directory is uploaded as a workflow artifact.
+
+Shared fixtures live in `tests/helpers/` (`storage-fixture.mjs`, `render-fixture.mjs`, `server.mjs`) and are imported by the integration and eval tests.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
