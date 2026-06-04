@@ -6,18 +6,18 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Storage } from "../../src/storage.mjs";
+import { LocalFsStorage } from "../../src/storage/LocalFsStorage.mjs";
 
 /**
  * @returns {Promise<{
- *   storage: Storage,
+ *   storage: LocalFsStorage,
  *   root: string,
  *   cleanup: () => Promise<void>
  * }>}
  */
 export async function makeTempStorage() {
 	const root = await mkdtemp(join(tmpdir(), "mermaid-test-"));
-	const storage = new Storage(root);
+	const storage = new LocalFsStorage(root);
 	await storage.load();
 	return {
 		storage,

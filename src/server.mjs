@@ -32,7 +32,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { render } from "./render.mjs";
-import { Storage, TTL_DAYS } from "./storage.mjs";
+import { LocalFsStorage as Storage, TTL_DAYS } from "./storage/LocalFsStorage.mjs";
 import { renderView, extractSvgBody, escapeHtml, fileUrlFor, httpError, log } from "./helpers.mjs";
 
 export { renderView } from "./helpers.mjs";
@@ -106,7 +106,9 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
 	}
 	const { id, svg, ascii, sourceLength } = await render(code);
 	await storage.put(id, code, svg, sourceLength);
-	const html = await renderView(id, await storage.get(id), svg);
+	const entry = await storage.pruneIfExpired(id);
+	if (!entry) throw new Error(`storage: put succeeded but entry vanished for ${id}`);
+	const html = await renderView(id, entry, svg);
 	await writeFile(join(DATA, "blobs", `${id}.html`), html, "utf-8");
 	const out = {
 		id,
