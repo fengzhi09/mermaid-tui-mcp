@@ -1,0 +1,18 @@
+{
+  "id": "5f910f8c-0c44-44aa-a347-0a149d31f431",
+  "runtime": "bash",
+  "purpose": "Kill stray node and verify port free",
+  "script_chars": 111,
+  "started_at": "2026-06-04T12:24:25.798Z",
+  "finished_at": "2026-06-04T12:24:28.617Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 2819,
+  "stdout_bytes": 36,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\5f910f8c-0c44-44aa-a347-0a149d31f431.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\5f910f8c-0c44-44aa-a347-0a149d31f431.stderr"
+}

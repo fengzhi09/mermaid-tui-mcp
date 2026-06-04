@@ -1,0 +1,30 @@
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mhandler input robustness[2m > [22m[2mgetDiagram returns svg as empty string (not undefined) when the blob is missing on disk
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs [2m([22m[2m30 tests[22m[2m)[22m[33m 11027[2mms[22m[39m
+   [33m[2m✓[22m[39m renderMermaid()[2m > [22mreturns { id, ascii, fileLink, httpLink: null, title: "" } on success without a title [33m 8979[2mms[22m[39m
+ [32m✓[39m tests/integration/http.test.mjs [2m([22m[2m3 tests[22m[2m)[22m[33m 14605[2mms[22m[39m
+   [33m[2m✓[22m[39m HTTP integration[2m > [22mserves /health, /raw/svg, /pin, and /view for a freshly rendered diagram [33m 10813[2mms[22m[39m
+   [33m[2m✓[22m[39m HTTP integration[2m > [22m/health exposes the S03 observability surface (counters + last_render_ms + last_errors) after a render and a failure [33m 2616[2mms[22m[39m
+   [33m[2m✓[22m[39m HTTP integration[2m > [22m/health last_errors ring is bounded at 5 (6 failures → ring holds the most recent 5) [33m 1173[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs [2m([22m[2m12 tests[22m[2m)[22m[33m 27191[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mcompletes the initialize handshake and reports serverInfo.name === 'mermaid-tui-mcp' [33m 2190[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mlists 7 tools in tools/list with the new CRUD surface [33m 1981[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrenders a diagram via tools/call and returns { id, ascii, fileLink, title, elapsed_ms } [33m 6533[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrenders a diagram with a title and round-trips it through the storage entry [33m 2440[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mpin_mermaid over stdio MCP flips the pinned flag and returns elapsed_ms [33m 2362[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22munpin_mermaid over stdio MCP is the dual of pin_mermaid [33m 2432[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mlist_diagrams over stdio MCP paginates with limit and supports pinned filter [33m 2159[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mget_diagram over stdio MCP returns the full object including title [33m 1774[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP removes entry + blob and returns deleted: true [33m 1905[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22msearch_diagrams over stdio MCP matches title with titleMatch boost [33m 1937[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP returns isError: true with code -32005 for a missing id (strict 404, MEM014) [33m 736[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrender_mermaid over stdio MCP returns isError: true with code -32602 for oversized code (eval-07 contract preserved through the S03 wrapper) [33m 740[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m      Tests [22m [1m[32m175 passed[39m[22m[90m (175)[39m
+[2m   Start at [22m 20:15:10
+[2m   Duration [22m 28.31s[2m (transform 935ms, setup 0ms, collect 12.08s, tests 143.57s, environment 5ms, prepare 5.33s)[22m
+

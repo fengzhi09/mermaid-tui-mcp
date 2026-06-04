@@ -1,0 +1,22 @@
+total 1
+drwxr-xr-x 1 ace12 197609  0  6月  4 20:26 .
+drwxr-xr-x 1 ace12 197609  0  6月  4 20:26 ..
+-rw-r--r-- 1 ace12 197609 15  6月  4 20:26 id1.svg
+---
+total 1
+drwxr-xr-x 1 ace12 197609   0  6月  4 20:26 .
+drwxr-xr-x 1 ace12 197609   0  6月  4 20:26 ..
+drwxr-xr-x 1 ace12 197609   0  6月  4 20:26 blobs
+drwxr-xr-x 1 ace12 197609   0  6月  4 20:26 meta
+-rw-r--r-- 1 ace12 197609 179  6月  4 20:26 store.json
+---
+{
+  "id1": {
+    "code": "graph TD; A-->B",
+    "createdAt": 1780575997040,
+    "pinned": false,
+    "lastAccessedAt": 1780575997040,
+    "sourceLength": 15,
+    "title": ""
+  }
+}

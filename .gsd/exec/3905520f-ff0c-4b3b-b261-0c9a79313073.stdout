@@ -1,0 +1,5 @@
+tests/unit/tools.test.mjs:726:		// for empty code — the underlying realRender() throws "empty mermaid source".
+tests/unit/tools.test.mjs:727:		await expect(renderMermaid({ code: "" }, fixture.ctx)).rejects.toThrow("empty mermaid source");
+tests/unit/errors.test.mjs:191:	it("maps 'empty mermaid source' (src/render.mjs throw site) to -32602 (InvalidParams)", () => {
+tests/unit/errors.test.mjs:192:		const err = new Error("empty mermaid source");
+tests/unit/errors.test.mjs:196:		expect(out.message).toBe("empty mermaid source");

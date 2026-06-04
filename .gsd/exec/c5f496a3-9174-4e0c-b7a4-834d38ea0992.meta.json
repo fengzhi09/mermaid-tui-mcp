@@ -1,0 +1,18 @@
+{
+  "id": "c5f496a3-9174-4e0c-b7a4-834d38ea0992",
+  "runtime": "bash",
+  "purpose": "Test 6: jsdom init 1x retry",
+  "script_chars": 454,
+  "started_at": "2026-06-04T12:26:21.383Z",
+  "finished_at": "2026-06-04T12:26:22.259Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 876,
+  "stdout_bytes": 57,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\c5f496a3-9174-4e0c-b7a4-834d38ea0992.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\c5f496a3-9174-4e0c-b7a4-834d38ea0992.stderr"
+}

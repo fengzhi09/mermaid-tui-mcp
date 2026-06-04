@@ -1,0 +1,18 @@
+{
+  "id": "d536969d-4629-40d5-a9c7-4e65b5527ff2",
+  "runtime": "bash",
+  "purpose": "Test 1 rerun on port 5400",
+  "script_chars": 530,
+  "started_at": "2026-06-04T12:24:40.847Z",
+  "finished_at": "2026-06-04T12:24:45.507Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 4660,
+  "stdout_bytes": 538,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d536969d-4629-40d5-a9c7-4e65b5527ff2.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d536969d-4629-40d5-a9c7-4e65b5527ff2.stderr"
+}

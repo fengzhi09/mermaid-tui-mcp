@@ -1,0 +1,18 @@
+{
+  "id": "96605909-e44c-4c40-a1ee-24cba78d68d9",
+  "runtime": "bash",
+  "purpose": "Test 13: sweep counter increment",
+  "script_chars": 1122,
+  "started_at": "2026-06-04T12:30:15.631Z",
+  "finished_at": "2026-06-04T12:30:19.856Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 4225,
+  "stdout_bytes": 505,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\96605909-e44c-4c40-a1ee-24cba78d68d9.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\96605909-e44c-4c40-a1ee-24cba78d68d9.stderr"
+}

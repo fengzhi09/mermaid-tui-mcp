@@ -1,0 +1,18 @@
+{
+  "id": "3b33a82c-3d38-4c3c-acb7-8e1b7acfcc7e",
+  "runtime": "bash",
+  "purpose": "Check node and npm versions",
+  "script_chars": 31,
+  "started_at": "2026-06-04T12:23:45.838Z",
+  "finished_at": "2026-06-04T12:23:47.805Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 1967,
+  "stdout_bytes": 18,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3b33a82c-3d38-4c3c-acb7-8e1b7acfcc7e.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3b33a82c-3d38-4c3c-acb7-8e1b7acfcc7e.stderr"
+}

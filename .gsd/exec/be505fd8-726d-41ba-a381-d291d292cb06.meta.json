@@ -1,0 +1,18 @@
+{
+  "id": "be505fd8-726d-41ba-a381-d291d292cb06",
+  "runtime": "bash",
+  "purpose": "Test 3: counters.json persistence",
+  "script_chars": 552,
+  "started_at": "2026-06-04T12:25:49.887Z",
+  "finished_at": "2026-06-04T12:25:54.261Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 4374,
+  "stdout_bytes": 402,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\be505fd8-726d-41ba-a381-d291d292cb06.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\be505fd8-726d-41ba-a381-d291d292cb06.stderr"
+}

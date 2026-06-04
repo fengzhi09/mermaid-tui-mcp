@@ -1,0 +1,11 @@
+=== Test 11 ===
+--- setInterval occurrences in server.mjs ---
+84:// Hourly sweep — .unref() keeps the setInterval from holding the event
+89:setInterval(() => {
+
+--- 60 * 60 * 1000 occurrences ---
+91:}, 60 * 60 * 1000).unref();
+
+--- context around 60 * 60 * 1000 ---
+}, 60 * 60 * 1000).unref();
+

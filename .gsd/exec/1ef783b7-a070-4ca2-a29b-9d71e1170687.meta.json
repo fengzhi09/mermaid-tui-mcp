@@ -1,0 +1,18 @@
+{
+  "id": "1ef783b7-a070-4ca2-a29b-9d71e1170687",
+  "runtime": "bash",
+  "purpose": "Check if jq is available",
+  "script_chars": 40,
+  "started_at": "2026-06-04T12:24:51.747Z",
+  "finished_at": "2026-06-04T12:24:52.028Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 281,
+  "stdout_bytes": 6,
+  "stderr_bytes": 2475,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\1ef783b7-a070-4ca2-a29b-9d71e1170687.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\1ef783b7-a070-4ca2-a29b-9d71e1170687.stderr"
+}

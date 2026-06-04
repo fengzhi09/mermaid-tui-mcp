@@ -1,0 +1,18 @@
+{
+  "id": "b88f1b78-74d6-4bc4-80b6-e15bb55e9e04",
+  "runtime": "bash",
+  "purpose": "Test 11: setInterval unref",
+  "script_chars": 338,
+  "started_at": "2026-06-04T12:28:31.163Z",
+  "finished_at": "2026-06-04T12:28:31.881Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 718,
+  "stdout_bytes": 297,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\b88f1b78-74d6-4bc4-80b6-e15bb55e9e04.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\b88f1b78-74d6-4bc4-80b6-e15bb55e9e04.stderr"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "37d15360-099e-42fb-b31a-20c218e952ad",
+  "runtime": "bash",
+  "purpose": "Test 12: full response dump",
+  "script_chars": 1408,
+  "started_at": "2026-06-04T12:29:17.033Z",
+  "finished_at": "2026-06-04T12:29:22.456Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 5423,
+  "stdout_bytes": 1176,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\37d15360-099e-42fb-b31a-20c218e952ad.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\37d15360-099e-42fb-b31a-20c218e952ad.stderr"
+}

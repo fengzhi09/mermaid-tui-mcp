@@ -1,0 +1,18 @@
+{
+  "id": "04fc21ac-ade1-4439-a26c-37a47e3a72d9",
+  "runtime": "bash",
+  "purpose": "Test 1: parse and verify field order using cygpath",
+  "script_chars": 860,
+  "started_at": "2026-06-04T12:25:20.108Z",
+  "finished_at": "2026-06-04T12:25:20.532Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 424,
+  "stdout_bytes": 526,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\04fc21ac-ade1-4439-a26c-37a47e3a72d9.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\04fc21ac-ade1-4439-a26c-37a47e3a72d9.stderr"
+}

@@ -1,0 +1,28 @@
+/c/Users/ace12/Documents/龙叔智能/codes/mermaid-tui-mcp/.gsd/worktrees/M001
+total 323
+drwxr-xr-x 1 ace12 197609      0  6月  4 20:16 .
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:07 ..
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:07 .bg-shell
+-rw-r--r-- 1 ace12 197609    228  6月  4 14:07 .editorconfig
+-rw-r--r-- 1 ace12 197609     88  6月  4 14:07 .git
+drwxr-xr-x 1 ace12 197609      0  6月  4 15:05 .github
+-rw-r--r-- 1 ace12 197609    267  6月  4 14:07 .gitignore
+drwxr-xr-x 1 ace12 197609      0  6月  4 20:22 .gsd
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:07 bin
+-rw-r--r-- 1 ace12 197609   1145  6月  4 14:07 CHANGELOG.md
+-rw-r--r-- 1 ace12 197609   3149  6月  4 14:07 CONTRIBUTING.md
+drwxr-xr-x 1 ace12 197609      0  6月  4 20:16 coverage
+drwxr-xr-x 1 ace12 197609      0  6月  4 20:17 data
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:07 docs
+-rw-r--r-- 1 ace12 197609   4413  6月  4 14:07 evals.xml
+-rw-r--r-- 1 ace12 197609   1060  6月  4 14:07 LICENSE
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:25 node_modules
+-rw-r--r-- 1 ace12 197609   1211  6月  4 16:12 package.json
+-rw-r--r-- 1 ace12 197609 183759  6月  4 16:12 package-lock.json
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:07 public
+-rw-r--r-- 1 ace12 197609   7634  6月  4 15:06 README.md
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:07 scripts
+-rw-r--r-- 1 ace12 197609   2074  6月  4 14:07 SECURITY.md
+drwxr-xr-x 1 ace12 197609      0  6月  4 19:52 src
+drwxr-xr-x 1 ace12 197609      0  6月  4 14:57 tests
+-rw-r--r-- 1 ace12 197609    864  6月  4 14:23 vitest.config.mjs

@@ -1,0 +1,22 @@
+---HEALTH---
+{"status":"ok","version":"0.1.0","uptimeSec":2,"ttlDays":7,"total":0,"pinned":0,"unpinned":0,"counters":{"render_total":0,"render_errors":0,"ascii_failures":0,"storage_write_retries":0,"sweep_runs":2,"sweep_removed":0},"last_render_ms":0,"last_errors":[]}
+---STDERR (structured JSON lines)---
+{"ts":"2026-06-04T12:17:06.568Z","level":"info","event":"mcp_stdio_connected"}
+{"ts":"2026-06-04T12:17:06.599Z","level":"info","event":"boot","version":"0.1.0","data":"C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\data","http":true,"stats":{"total":0,"pinned":0,"unpinned":0}}
+{"ts":"2026-06-04T12:17:06.604Z","level":"info","event":"http_listening","host":"127.0.0.1","port":5400}
+---COUNTERS---
+{
+  "render_total": 0,
+  "render_errors": 0,
+  "ascii_failures": 0,
+  "storage_write_retries": 0,
+  "sweep_runs": 2,
+  "sweep_removed": 0
+}---STDIO-MCP SMOKE (list_tools)---
+"name":"render_mermaid"
+"name":"pin_mermaid"
+"name":"unpin_mermaid"
+"name":"list_diagrams"
+"name":"get_diagram"
+"name":"delete_mermaid"
+"name":"search_diagrams"

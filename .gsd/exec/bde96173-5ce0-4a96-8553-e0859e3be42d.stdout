@@ -1,0 +1,6 @@
+55:const HTTP_ENABLED = process.env.MERMAID_RENDERER_HTTP === "1";
+56:const HTTP_PORT = Number.parseInt(process.env.MERMAID_RENDERER_PORT || "5300", 10);
+57:const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
+117:	httpEnabled: HTTP_ENABLED,
+134:if (HTTP_ENABLED) {
+242:log({ event: "boot", version: VERSION, data: DATA, http: HTTP_ENABLED, stats: storage.stats() });

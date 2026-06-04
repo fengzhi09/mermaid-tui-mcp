@@ -1,0 +1,30 @@
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mget_diagram over stdio MCP returns the full object including title [33m 1824[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP removes entry + blob and returns deleted: true [33m 1794[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22msearch_diagrams over stdio MCP matches title with titleMatch boost [33m 2189[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP returns isError: true with code -32005 for a missing id (strict 404, MEM014) [33m 935[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrender_mermaid over stdio MCP returns isError: true with code -32602 for oversized code (eval-07 contract preserved through the S03 wrapper) [33m 937[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m      Tests [22m [1m[32m175 passed[39m[22m[90m (175)[39m
+[2m   Start at [22m 20:15:48
+[2m   Duration [22m 25.15s[2m (transform 750ms, setup 0ms, collect 11.07s, tests 126.30s, environment 7ms, prepare 5.10s)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   80.95 |    85.11 |   96.38 |   80.95 |                   
+ src               |   80.92 |    86.44 |   96.42 |   80.92 |                   
+  counters.mjs     |   96.77 |     90.9 |     100 |   96.77 | 69-70,89-90       
+  errors.mjs       |     100 |    87.87 |     100 |     100 | 150-151,200,239   
+  health-state.mjs |     100 |    83.33 |     100 |     100 | 32-34             
+  helpers.mjs      |     100 |    94.44 |     100 |     100 | 28                
+  logger.mjs       |    91.8 |       60 |     100 |    91.8 | 52-56             
+  ...-fallback.mjs |   90.52 |    78.57 |     100 |   90.52 | 51-52,60-62,94-97 
+  render.mjs       |     100 |       90 |   92.85 |     100 | 19,71,101,161,174 
+  server.mjs       |       0 |        0 |       0 |       0 | 1-253             
+  tools.mjs        |   94.79 |    86.36 |     100 |   94.79 | ...97-398,405-419 
+ src/storage       |   81.04 |    82.99 |   96.29 |   81.04 |                   
+  Backend.mjs      |       0 |        0 |       0 |       0 | 1-110             
+  ...FsStorage.mjs |   98.08 |    83.56 |     100 |   98.08 | ...71-472,508-509 
+-------------------|---------|----------|---------|---------|-------------------

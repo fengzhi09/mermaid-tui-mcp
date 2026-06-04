@@ -1,0 +1,15 @@
+---STDERR---
+{"ts":"2026-06-04T12:16:28.123Z","level":"info","event":"mcp_stdio_connected"}
+{"ts":"2026-06-04T12:16:28.149Z","level":"info","event":"boot","version":"0.1.0","data":"C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\data","http":true,"stats":{"total":0,"pinned":0,"unpinned":0}}
+{"ts":"2026-06-04T12:16:28.154Z","level":"info","event":"http_listening","host":"127.0.0.1","port":5300}
+---HEALTH CHECK---
+
+---COUNTERS FILE---
+{
+  "render_total": 0,
+  "render_errors": 0,
+  "ascii_failures": 0,
+  "storage_write_retries": 0,
+  "sweep_runs": 1,
+  "sweep_removed": 0
+}

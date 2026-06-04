@@ -1,0 +1,18 @@
+{
+  "id": "fe55a8a5-1041-483b-82a5-7c9728368dee",
+  "runtime": "bash",
+  "purpose": "Test 8: ENOSPC no-retry",
+  "script_chars": 641,
+  "started_at": "2026-06-04T12:28:13.057Z",
+  "finished_at": "2026-06-04T12:28:13.668Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 611,
+  "stdout_bytes": 60,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\fe55a8a5-1041-483b-82a5-7c9728368dee.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\fe55a8a5-1041-483b-82a5-7c9728368dee.stderr"
+}

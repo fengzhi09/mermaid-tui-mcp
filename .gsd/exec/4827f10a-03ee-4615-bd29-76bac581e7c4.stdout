@@ -1,0 +1,8 @@
+7:// Optional HTTP mode (MERMAID_RENDERER_HTTP=1): in addition to MCP, listens
+55:const HTTP_ENABLED = process.env.MERMAID_RENDERER_HTTP === "1";
+56:const HTTP_PORT = Number.parseInt(process.env.MERMAID_RENDERER_PORT || "5300", 10);
+119:	httpPort: HTTP_PORT,
+136:		const url = new URL(req.url, `http://${HTTP_HOST}:${HTTP_PORT}`);
+216:	tryListen(httpServer, HTTP_HOST, [HTTP_PORT, HTTP_PORT + 1, HTTP_PORT + 2])
+218:			// Override HTTP_PORT in the listening log so the operator sees
+223:			log({ level: "error", event: "http_listen_failed", error: String(e?.message || e), port: HTTP_PORT });

@@ -1,0 +1,18 @@
+{
+  "id": "d85571aa-609a-4ded-84a5-b851c52a99a6",
+  "runtime": "bash",
+  "purpose": "Test 10: MEM024 list items have id",
+  "script_chars": 573,
+  "started_at": "2026-06-04T12:28:25.835Z",
+  "finished_at": "2026-06-04T12:28:26.483Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 648,
+  "stdout_bytes": 93,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d85571aa-609a-4ded-84a5-b851c52a99a6.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d85571aa-609a-4ded-84a5-b851c52a99a6.stderr"
+}

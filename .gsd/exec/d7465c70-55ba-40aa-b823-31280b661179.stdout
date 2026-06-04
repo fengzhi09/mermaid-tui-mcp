@@ -1,0 +1,200 @@
+Parsing line: U2
+Setting arrow from [ { name: [32m'AS3'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'U2'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:     AS3 --> RP2
+Parsing line:     AS3
+Parsing line: RP2
+Setting arrow from [ { name: [32m'AS3'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'RP2'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:   end
+Parsing remaining text to node   end
+
+ [32m✓[39m tests/evals/eval-02-three-flows.test.mjs[2m > [22meval-02: three auth flows render in a single call (one id, one diagram)[2m > [22mreturns a single { id, svg, ascii, sourceLength } for a 3-subgraph flowchart[33m 12276[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-10-file-link.test.mjs[2m > [22meval-10: fileLink from render_mermaid starts with file:/// and points to an existing .html on disk[2m > [22mreturns a file:/// link to a reachable .html on the host filesystem[33m 13926[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-09-pin-tool.test.mjs[2m > [22meval-09: pin_mermaid over stdio MCP (S02 flipped from it.todo)[2m > [22mpins the just-rendered diagram so it survives the 7-day TTL sweep[33m 13932[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-06-er-diagram.test.mjs[2m > [22meval-06: erDiagram with 5 entities and 4 relationships renders via stdio MCP[2m > [22mdoes not throw and returns a non-empty fileLink for the erDiagram[33m 14041[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-05-two-renders.test.mjs[2m > [22meval-05: two render_mermaid calls produce two different ids[2m > [22mfirst and second render return distinct ids (and distinct fileLinks)[33m 14103[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-08-draw-anything.test.mjs[2m > [22meval-08: 'draw anything' default — a small system architecture flowchart renders[2m > [22mdoes not throw and returns a non-empty result for the default architecture diagram[33m 14350[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mrenderMermaid()[2m > [22m[2mreturns { id, ascii, fileLink, httpLink: null, title: "" } on success without a title
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mrenderMermaid()[2m > [22m[2mpersists the title in the returned object and in the stored entry
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mrenderMermaid()[2m > [22mreturns { id, ascii, fileLink, httpLink: null, title: "" } on success without a title[33m 11750[2mms[22m[39m
+ [32m✓[39m tests/integration/http.test.mjs[2m > [22mHTTP integration[2m > [22mserves /health, /raw/svg, /pin, and /view for a freshly rendered diagram[33m 14577[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mrenderMermaid()[2m > [22m[2mreturns httpLink when ctx.httpEnabled is true
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mrenderMermaid()[2m > [22mpersists the title in the returned object and in the stored entry[32m 97[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mrenderMermaid()[2m > [22m[2mwrites the <id>.html blob next to the <id>.svg blob (mirror v0.1.0 pattern)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mrenderMermaid()[2m > [22m[2mdoes not include the warnings key when the render is clean (no field pollution)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mrenderMermaid()[2m > [22mreturns httpLink when ctx.httpEnabled is true[32m 83[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mrenderMermaid()[2m > [22mwrites the <id>.html blob next to the <id>.svg blob (mirror v0.1.0 pattern)[32m 61[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mrenderMermaid()[2m > [22msurfaces warnings: ['ascii_failed: <reason>'] when the renderer reports an ASCII conversion failure (R025)[32m 17[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mpinMermaid()[2m > [22m[2mflips the pin flag to true and returns { id, pinned: true }
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2munpinMermaid()[2m > [22m[2mflips the pin flag to false and returns { id, pinned: false }
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mrenderMermaid()[2m > [22mdoes not include the warnings key when the render is clean (no field pollution)[32m 58[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mpinMermaid()[2m > [22mflips the pin flag to true and returns { id, pinned: true }[32m 64[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mpinMermaid()[2m > [22mthrows NotFoundError (code -32005, retryable: false) for a missing id[32m 9[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mlistDiagrams()[2m > [22m[2mreturns { items, nextCursor } with the right shape and paginates with limit=2 of 3 entries
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mlistDiagrams()[2m > [22m[2mreturns { items, nextCursor } with the right shape and paginates with limit=2 of 3 entries
+[22m[39mParsing line:   C-->D
+Parsing remaining text to node   C-->D
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22munpinMermaid()[2m > [22mflips the pin flag to false and returns { id, pinned: false }[32m 73[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22munpinMermaid()[2m > [22mthrows NotFoundError (code -32005) for a missing id[32m 7[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mlistDiagrams()[2m > [22m[2mreturns { items, nextCursor } with the right shape and paginates with limit=2 of 3 entries
+[22m[39mParsing line:   E-->F
+Parsing remaining text to node   E-->F
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mgetDiagram()[2m > [22m[2mreturns the full object {id, title, code, ascii, svg, createdAt, lastAccessedAt, pinned, sourceLength}
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mlistDiagrams()[2m > [22mreturns { items, nextCursor } with the right shape and paginates with limit=2 of 3 entries[32m 217[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mdeleteMermaid()[2m > [22m[2mremoves the entry + blob and returns { id, deleted: true }
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mreturns items with titleMatch: true for title matches (ranks above code matches)
+[22m[39mParsing line:   A -->|auth| B
+Parsing line:   A
+Parsing line: B
+Setting arrow from [ { name: [32m'A'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'B'[39m, styleClass: [32m''[39m } ] with label auth
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mgetDiagram()[2m > [22mreturns the full object {id, title, code, ascii, svg, createdAt, lastAccessedAt, pinned, sourceLength}[32m 95[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mgetDiagram()[2m > [22mthrows NotFoundError (code -32005) for a missing id[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mdeleteMermaid()[2m > [22mremoves the entry + blob and returns { id, deleted: true }[32m 85[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mdeleteMermaid()[2m > [22mthrows NotFoundError (code -32005) for a missing id (strict, not idempotent per MEM014)[32m 5[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mreturns items with titleMatch: true for title matches (ranks above code matches)
+[22m[39mParsing line:   X-->Y
+Parsing remaining text to node   X-->Y
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mpasses limit / cursor / pinned through to storage.search
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mpasses limit / cursor / pinned through to storage.search
+[22m[39mParsing line:   X-->Y
+Parsing remaining text to node   X-->Y
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mpasses limit / cursor / pinned through to storage.search
+[22m[39mParsing line:   M-->N
+Parsing remaining text to node   M-->N
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22msearchDiagrams()[2m > [22mreturns items with titleMatch: true for title matches (ranks above code matches)[32m 111[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mregisters all 7 tools with description + inputSchema set
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22mpin_mermaid over stdio MCP flips the pinned flag and returns elapsed_ms[33m 2717[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders a success R020 envelope: { content: [{type:'text', text: JSON}], elapsed_ms >= 0
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22msearchDiagrams()[2m > [22mpasses limit / cursor / pinned through to storage.search[32m 133[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mregisters all 7 tools with description + inputSchema set[32m 58[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders a success R020 envelope: { content: [{type:'text', text: JSON}], elapsed_ms >= 0
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders a tagged-error R020 envelope: isError: true, code: -32005, retryable: false, elapsed_ms >= 0
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mrenders a success R020 envelope: { content: [{type:'text', text: JSON}], elapsed_ms >= 0[32m 117[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders each CRUD tool's success envelope with elapsed_ms
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders each CRUD tool's success envelope with elapsed_ms
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mrenders a tagged-error R020 envelope: isError: true, code: -32005, retryable: false, elapsed_ms >= 0[32m 57[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mclassifies unknown (non-tagged) errors via classifyDomainError → isError:true with code -32603 in the inner envelope (S03: surfaces 500-class failures inside the CallToolResult instead of bubbling to JSON-RPC)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mclassifies the renderer's 'mermaid source too long' throw as -32602 (InvalidParams) in the inner envelope
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mrenders each CRUD tool's success envelope with elapsed_ms[32m 117[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mclassifies unknown (non-tagged) errors via classifyDomainError → isError:true with code -32603 in the inner envelope (S03: surfaces 500-class failures inside the CallToolResult instead of bubbling to JSON-RPC)[32m 47[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mclassifies the renderer's 'mermaid parse error:' throw as -32002 (RenderFailed) in the inner envelope
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mfailure path fires all four observability hooks (logger + counters + recordError + setLastRenderMs)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mclassifies the renderer's 'mermaid source too long' throw as -32602 (InvalidParams) in the inner envelope[32m 62[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mclassifies the renderer's 'mermaid parse error:' throw as -32002 (RenderFailed) in the inner envelope[32m 57[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2msuccess path fires the same four observability hooks (logger + counters + setLastRenderMs — no recordError)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2msuccess path fires the same four observability hooks (logger + counters + setLastRenderMs — no recordError)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mfailure path fires all four observability hooks (logger + counters + recordError + setLastRenderMs)[32m 65[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mwarns once when observability hooks are missing (defensive, not spam)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mwarns once when observability hooks are missing (defensive, not spam)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mwarns once when observability hooks are missing (defensive, not spam)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22msuccess path fires the same four observability hooks (logger + counters + setLastRenderMs — no recordError)[32m 99[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrecords the render_warnings path through the wrapper (warnings key on success envelope)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mhandler input robustness[2m > [22m[2mgetDiagram returns svg as empty string (not undefined) when the blob is missing on disk
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mwarns once when observability hooks are missing (defensive, not spam)[32m 118[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mregisterTools()[2m > [22mrecords the render_warnings path through the wrapper (warnings key on success envelope)[32m 51[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mhandler input robustness[2m > [22mrenderMermaid rejects empty code (storage untouched) by failing the zod-validated args path[32m 10[2mms[22m[39m
+ [32m✓[39m tests/unit/tools.test.mjs[2m > [22mhandler input robustness[2m > [22mgetDiagram returns svg as empty string (not undefined) when the blob is missing on disk[32m 50[2mms[22m[39m
+ [32m✓[39m tests/integration/http.test.mjs[2m > [22mHTTP integration[2m > [22m/health exposes the S03 observability surface (counters + last_render_ms + last_errors) after a render and a failure[33m 2739[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22munpin_mermaid over stdio MCP is the dual of pin_mermaid[33m 2479[2mms[22m[39m
+ [32m✓[39m tests/integration/http.test.mjs[2m > [22mHTTP integration[2m > [22m/health last_errors ring is bounded at 5 (6 failures → ring holds the most recent 5)[33m 1226[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22mlist_diagrams over stdio MCP paginates with limit and supports pinned filter[33m 2501[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22mget_diagram over stdio MCP returns the full object including title[33m 2411[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22mdelete_mermaid over stdio MCP removes entry + blob and returns deleted: true[33m 2189[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22msearch_diagrams over stdio MCP matches title with titleMatch boost[33m 2273[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22mdelete_mermaid over stdio MCP returns isError: true with code -32005 for a missing id (strict 404, MEM014)[33m 900[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs[2m > [22mstdio MCP integration[2m > [22mrender_mermaid over stdio MCP returns isError: true with code -32602 for oversized code (eval-07 contract preserved through the S03 wrapper)[33m 904[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m      Tests [22m [1m[32m175 passed[39m[22m[90m (175)[39m
+[2m   Start at [22m 20:30:47
+[2m   Duration [22m 30.49s[2m (transform 1.38s, setup 0ms, collect 14.75s, tests 187.00s, environment 6ms, prepare 6.47s)[22m
+

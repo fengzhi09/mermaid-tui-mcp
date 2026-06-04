@@ -1,0 +1,18 @@
+{
+  "id": "c52a784b-fae5-4f6f-b9d9-6b5611bd58ae",
+  "runtime": "bash",
+  "purpose": "Test 1: parse and verify field order",
+  "script_chars": 651,
+  "started_at": "2026-06-04T12:24:59.758Z",
+  "finished_at": "2026-06-04T12:25:00.007Z",
+  "exit_code": 1,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 249,
+  "stdout_bytes": 0,
+  "stderr_bytes": 728,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\c52a784b-fae5-4f6f-b9d9-6b5611bd58ae.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\c52a784b-fae5-4f6f-b9d9-6b5611bd58ae.stderr"
+}

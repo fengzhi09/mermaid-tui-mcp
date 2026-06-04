@@ -1,0 +1,18 @@
+{
+  "id": "e3972ef7-a6c5-44f7-a1c2-42000ebb6ea6",
+  "runtime": "bash",
+  "purpose": "Find actual temp directory",
+  "script_chars": 111,
+  "started_at": "2026-06-04T12:25:04.201Z",
+  "finished_at": "2026-06-04T12:25:04.630Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 429,
+  "stdout_bytes": 187,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\e3972ef7-a6c5-44f7-a1c2-42000ebb6ea6.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\e3972ef7-a6c5-44f7-a1c2-42000ebb6ea6.stderr"
+}

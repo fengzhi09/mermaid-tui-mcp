@@ -1,0 +1,17 @@
+=== before boot ===
+no counters file
+=== after boot ===
+-rw-r--r-- 1 ace12 197609 139  6月  4 20:25 counters.json
+=== counters.json content ===
+{
+  "render_total": 0,
+  "render_errors": 0,
+  "ascii_failures": 0,
+  "storage_write_retries": 0,
+  "sweep_runs": 1,
+  "sweep_removed": 0
+}
+=== tmp file present? ===
+ls: cannot access 'data/counters.json.tmp': No such file or directory
+=== killing ===
+done

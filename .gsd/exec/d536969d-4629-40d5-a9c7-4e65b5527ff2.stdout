@@ -1,0 +1,8 @@
+server pid: 19880
+=== STDOUT lines: 0 ===
+=== STDERR lines: 3 ===
+=== STDOUT content ===
+=== STDERR content ===
+{"ts":"2026-06-04T12:24:42.510Z","level":"info","event":"mcp_stdio_connected"}
+{"ts":"2026-06-04T12:24:42.542Z","level":"info","event":"boot","version":"0.1.0","data":"C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\data","http":true,"stats":{"total":0,"pinned":0,"unpinned":0}}
+{"ts":"2026-06-04T12:24:42.549Z","level":"info","event":"http_listening","host":"127.0.0.1","port":5400}

@@ -1,0 +1,18 @@
+{
+  "id": "55943974-492a-40d4-a32d-3d0759ecbb93",
+  "runtime": "bash",
+  "purpose": "List working directory contents",
+  "script_chars": 13,
+  "started_at": "2026-06-04T12:22:57.351Z",
+  "finished_at": "2026-06-04T12:22:57.542Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 191,
+  "stdout_bytes": 1575,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\55943974-492a-40d4-a32d-3d0759ecbb93.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\55943974-492a-40d4-a32d-3d0759ecbb93.stderr"
+}

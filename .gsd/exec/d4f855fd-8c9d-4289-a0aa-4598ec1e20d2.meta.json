@@ -1,0 +1,18 @@
+{
+  "id": "d4f855fd-8c9d-4289-a0aa-4598ec1e20d2",
+  "runtime": "bash",
+  "purpose": "Test 7: writeFile retry on EAGAIN",
+  "script_chars": 687,
+  "started_at": "2026-06-04T12:26:28.506Z",
+  "finished_at": "2026-06-04T12:26:29.069Z",
+  "exit_code": 2,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 563,
+  "stdout_bytes": 0,
+  "stderr_bytes": 162,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d4f855fd-8c9d-4289-a0aa-4598ec1e20d2.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d4f855fd-8c9d-4289-a0aa-4598ec1e20d2.stderr"
+}

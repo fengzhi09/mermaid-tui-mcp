@@ -1,0 +1,18 @@
+{
+  "id": "213c5455-ebf6-4b83-b027-b01c75704957",
+  "runtime": "bash",
+  "purpose": "Check for existing test artifacts",
+  "script_chars": 137,
+  "started_at": "2026-06-04T12:23:14.297Z",
+  "finished_at": "2026-06-04T12:23:14.868Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 571,
+  "stdout_bytes": 361,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\213c5455-ebf6-4b83-b027-b01c75704957.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\213c5455-ebf6-4b83-b027-b01c75704957.stderr"
+}

@@ -1,0 +1,16 @@
+47:| mermaid render timeout (10s) | `-32001` (Render timeout) | true | "mermaid render exceeded 10000ms" |
+53:**Namespace disambiguation:** these `code` values live in the INNER `error.code` of the MCP `CallToolResult` (`isError: true`); they are NOT the JSON-RPC envelope `error.code`. The two namespaces share a few numbers (-32602 is the most common collision) but mean different things. See `docs/mcp-protocol.md` for the wire shape.
+96:  "counters": {
+104:  "last_render_ms": 234,
+105:  "last_errors": [
+118:| `counters` | object | The 6 persistent monotonic counters (R010). Persisted to `data/counters.json` and reloaded on boot. |
+119:| `last_render_ms` | number | Wall-clock ms of the most recent tool call (success or failure). `0` when no tool has been called yet. |
+120:| `last_errors` | array | Up to 5 most recent tagged failures (FIFO ring; oldest dropped when a 6th is recorded). Always an array, possibly empty. Each entry carries `code` (number), `at` (epoch ms), `retryable` (bool), and `message` (string). |
+127:| `render_errors` | Any tool call fails with a tagged error (-32001..-32009, -32602, -32603). |
+135:`last_errors[0..4]` is a 5-element FIFO. Each entry is `{code, at, retryable, message}`. The codes are the same as the inner `CallToolResult` payload codes (see the table above and `docs/mcp-protocol.md`).
+166:| `data/counters.json` | Persistent monotonic counters (R010) | Rewritten on every `increment()`. |
+167:| `data/counters.json.tmp` | Atomic-write staging (counters) | Unlinked on next `load()` if a previous save crashed. |
+---PROTOCOL---
+116:| `-32001` | true | Render timeout — `mermaid.render()` didn't return within `MERMAID_RENDER_TIMEOUT_MS` (default 10s). |
+125:**Namespace disambiguation (CRITICAL):** the `code` field above is the INNER `CallToolResult` payload code, NOT the JSON-RPC envelope `error.code`. The two namespaces share a few numbers (most notably `-32602` — zod uses it in both layers, but the meaning is different) and the protocol is wired so an LLM client always reads the inner one for tool-failure diagnostics:
+191:- Treating the JSON-RPC envelope `error.code` and the inner `CallToolResult` `code` as the same namespace — they are not. See "Namespace disambiguation" above.

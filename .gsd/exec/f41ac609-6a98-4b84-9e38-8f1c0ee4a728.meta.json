@@ -1,0 +1,18 @@
+{
+  "id": "f41ac609-6a98-4b84-9e38-8f1c0ee4a728",
+  "runtime": "bash",
+  "purpose": "End-to-end smoke: boot the server, hit /health, check stderr JSON, check counters persistence",
+  "script_chars": 407,
+  "started_at": "2026-06-04T12:16:27.048Z",
+  "finished_at": "2026-06-04T12:16:33.948Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 6900,
+  "stdout_bytes": 618,
+  "stderr_bytes": 95,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\f41ac609-6a98-4b84-9e38-8f1c0ee4a728.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\f41ac609-6a98-4b84-9e38-8f1c0ee4a728.stderr"
+}

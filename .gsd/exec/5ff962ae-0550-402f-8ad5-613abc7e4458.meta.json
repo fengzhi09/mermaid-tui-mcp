@@ -1,0 +1,18 @@
+{
+  "id": "5ff962ae-0550-402f-8ad5-613abc7e4458",
+  "runtime": "bash",
+  "purpose": "Test 12: MCP stdio test for -32602",
+  "script_chars": 1821,
+  "started_at": "2026-06-04T12:29:02.151Z",
+  "finished_at": "2026-06-04T12:29:07.718Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 5567,
+  "stdout_bytes": 47,
+  "stderr_bytes": 535,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\5ff962ae-0550-402f-8ad5-613abc7e4458.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\5ff962ae-0550-402f-8ad5-613abc7e4458.stderr"
+}

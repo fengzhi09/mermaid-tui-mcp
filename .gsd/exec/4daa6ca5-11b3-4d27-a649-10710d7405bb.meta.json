@@ -1,0 +1,18 @@
+{
+  "id": "4daa6ca5-11b3-4d27-a649-10710d7405bb",
+  "runtime": "bash",
+  "purpose": "Identify process on port 5400",
+  "script_chars": 50,
+  "started_at": "2026-06-04T12:24:21.284Z",
+  "finished_at": "2026-06-04T12:24:22.430Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 1146,
+  "stdout_bytes": 236,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\4daa6ca5-11b3-4d27-a649-10710d7405bb.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\4daa6ca5-11b3-4d27-a649-10710d7405bb.stderr"
+}

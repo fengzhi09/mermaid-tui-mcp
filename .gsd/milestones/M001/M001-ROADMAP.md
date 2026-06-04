@@ -22,7 +22,7 @@
 - [x] **S02: MCP tools - 7 tools, CRUD complete** `risk:high` `depends:[S01]`
   > After this: stdio MCP 列 7 工具(render 与 6 资源管理);render 接可选 title 入参;pin_mermaid 后 sweep 不删;list_diagrams 与 search_diagrams 翻页过滤与 title 命中优先;get_diagram 完整对象含 title;delete_mermaid 真删;storage pluggable 接口就绪(LocalFsStorage 默认)
 
-- [ ] **S03: Observability - logs, health, counters, error contract** `risk:medium` `depends:[S01]`
+- [x] **S03: Observability - logs, health, counters, error contract** `risk:medium` `depends:[S01]`
   > After this: stderr 单行 JSON 日志(字段稳定 ts 与 level 与 event 与 code 与 id);/health 返 counters 与 last_render_ms 与 last_errors(5 条环形)与现有字段;data/counters.json 持久化启动 load increment save(tmp+rename 原子);10s 渲染超时可注入触发;jsdom 初始化 1 次重试可注入触发;写失败 1 次重试可注入触发;错误码 -32001 到 -32009 映射到 counter 齐全
 
 - [ ] **S04: Integration verification - MCP Inspector and 5-client real smoke** `risk:high` `depends:[S02,S03]`

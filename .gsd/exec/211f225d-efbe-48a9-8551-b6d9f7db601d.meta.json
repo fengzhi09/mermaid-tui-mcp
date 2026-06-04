@@ -1,0 +1,18 @@
+{
+  "id": "211f225d-efbe-48a9-8551-b6d9f7db601d",
+  "runtime": "bash",
+  "purpose": "Test 1: stderr single-line JSON",
+  "script_chars": 426,
+  "started_at": "2026-06-04T12:24:06.038Z",
+  "finished_at": "2026-06-04T12:24:10.177Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 4139,
+  "stdout_bytes": 522,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\211f225d-efbe-48a9-8551-b6d9f7db601d.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\211f225d-efbe-48a9-8551-b6d9f7db601d.stderr"
+}

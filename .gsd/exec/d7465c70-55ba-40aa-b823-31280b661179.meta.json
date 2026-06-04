@@ -1,0 +1,18 @@
+{
+  "id": "d7465c70-55ba-40aa-b823-31280b661179",
+  "runtime": "bash",
+  "purpose": "Run full test suite",
+  "script_chars": 276,
+  "started_at": "2026-06-04T12:30:44.552Z",
+  "finished_at": "2026-06-04T12:31:18.721Z",
+  "exit_code": null,
+  "signal": "SIGKILL",
+  "timed_out": true,
+  "duration_ms": 34169,
+  "stdout_bytes": 18586,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d7465c70-55ba-40aa-b823-31280b661179.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d7465c70-55ba-40aa-b823-31280b661179.stderr"
+}

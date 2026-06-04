@@ -1,0 +1,18 @@
+{
+  "id": "179338b6-6359-4313-b8af-21dc08789987",
+  "runtime": "bash",
+  "purpose": "Final invariants + invariants + test count",
+  "script_chars": 511,
+  "started_at": "2026-06-04T12:17:37.871Z",
+  "finished_at": "2026-06-04T12:18:27.251Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 49380,
+  "stdout_bytes": 971,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\179338b6-6359-4313-b8af-21dc08789987.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\179338b6-6359-4313-b8af-21dc08789987.stderr"
+}

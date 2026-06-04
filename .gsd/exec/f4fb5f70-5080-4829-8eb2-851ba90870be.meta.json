@@ -1,0 +1,18 @@
+{
+  "id": "f4fb5f70-5080-4829-8eb2-851ba90870be",
+  "runtime": "bash",
+  "purpose": "Test 5: render timeout",
+  "script_chars": 501,
+  "started_at": "2026-06-04T12:26:13.517Z",
+  "finished_at": "2026-06-04T12:26:15.309Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 1792,
+  "stdout_bytes": 61,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\f4fb5f70-5080-4829-8eb2-851ba90870be.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\f4fb5f70-5080-4829-8eb2-851ba90870be.stderr"
+}

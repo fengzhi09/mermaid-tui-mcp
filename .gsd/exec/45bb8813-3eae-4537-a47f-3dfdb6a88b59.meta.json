@@ -1,0 +1,18 @@
+{
+  "id": "45bb8813-3eae-4537-a47f-3dfdb6a88b59",
+  "runtime": "bash",
+  "purpose": "Test 4: single-flight concurrent increments",
+  "script_chars": 449,
+  "started_at": "2026-06-04T12:26:04.537Z",
+  "finished_at": "2026-06-04T12:26:05.430Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 893,
+  "stdout_bytes": 19,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\45bb8813-3eae-4537-a47f-3dfdb6a88b59.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\45bb8813-3eae-4537-a47f-3dfdb6a88b59.stderr"
+}

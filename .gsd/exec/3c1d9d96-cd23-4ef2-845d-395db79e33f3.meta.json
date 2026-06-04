@@ -1,0 +1,18 @@
+{
+  "id": "3c1d9d96-cd23-4ef2-845d-395db79e33f3",
+  "runtime": "bash",
+  "purpose": "Verify EAGAIN test wrote blob",
+  "script_chars": 168,
+  "started_at": "2026-06-04T12:27:13.437Z",
+  "finished_at": "2026-06-04T12:27:13.993Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 556,
+  "stdout_bytes": 600,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3c1d9d96-cd23-4ef2-845d-395db79e33f3.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3c1d9d96-cd23-4ef2-845d-395db79e33f3.stderr"
+}

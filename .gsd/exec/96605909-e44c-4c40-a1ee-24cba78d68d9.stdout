@@ -1,0 +1,20 @@
+=== before boot ===
+ls: cannot access 'data/counters.json': No such file or directory
+=== counters.json after boot ===
+{
+  "render_total": 0,
+  "render_errors": 0,
+  "ascii_failures": 0,
+  "storage_write_retries": 0,
+  "sweep_runs": 1,
+  "sweep_removed": 0
+}
+=== individual counters ===
+sweep_runs = 1 (>= 1: true )
+render_total = 0 (== 0: true )
+render_errors = 0 (== 0: true )
+ascii_failures = 0 (== 0: true )
+storage_write_retries = 0 (== 0: true )
+sweep_removed = 0 (== 0: true )
+=== killing ===
+done

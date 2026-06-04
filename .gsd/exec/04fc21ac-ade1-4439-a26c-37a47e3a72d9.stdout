@@ -1,0 +1,14 @@
+resolved: C:\Users\ace12\AppData\Local\Temp\s03-stderr.log
+lines: 3
+line 0 keys: ts,level,event
+  ts=2026-06-04T12:24:42.510Z (ends Z=true)
+  level=info event=mcp_stdio_connected
+  key order: ts[0] level[1] event[2]
+line 1 keys: ts,level,event,version,data,http,stats
+  ts=2026-06-04T12:24:42.542Z (ends Z=true)
+  level=info event=boot
+  key order: ts[0] level[1] event[2]
+line 2 keys: ts,level,event,host,port
+  ts=2026-06-04T12:24:42.549Z (ends Z=true)
+  level=info event=http_listening
+  key order: ts[0] level[1] event[2]

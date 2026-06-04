@@ -1,0 +1,19 @@
+---MEM024 id projection in list/search---
+14://   - S03: list() and search() project {id, ...e} (MEM024 fix)
+375:		// MEM024 fix: project {id, ...entry} so the caller can pin/get/delete
+381:			items: page.map(([id, e]) => ({ id, ...e })),
+443:		// MEM024 fix: project {id, ...entry, titleMatch, snippet} so the
+448:			items: pageRaw.map((m) => ({ id: m.id, ...m.entry, titleMatch: m.titleMatch, snippet: m.snippet })),
+---S01 invariant ---
+6
+---no console.error in src ---
+no hits
+---MEM017 sweep unref ---
+84:// Hourly sweep — .unref() keeps the setInterval from holding the event
+87:// fix is to make the interval not keep the loop alive. The unref'd
+91:}, 60 * 60 * 1000).unref();
+245:// setTimeout is unref'd so it doesn't hold the loop open if stdio
+251:		setTimeout(() => process.exit(0), 3000).unref();
+---test count summary---
+[2m Test Files [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m      Tests [22m [1m[32m175 passed[39m[22m[90m (175)[39m

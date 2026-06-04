@@ -1,0 +1,18 @@
+{
+  "id": "86bf4bc4-0cb1-4653-86b8-f315669dbad1",
+  "runtime": "bash",
+  "purpose": "Verify /tmp path resolution",
+  "script_chars": 169,
+  "started_at": "2026-06-04T12:25:09.596Z",
+  "finished_at": "2026-06-04T12:25:09.957Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 361,
+  "stdout_bytes": 109,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\86bf4bc4-0cb1-4653-86b8-f315669dbad1.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\86bf4bc4-0cb1-4653-86b8-f315669dbad1.stderr"
+}

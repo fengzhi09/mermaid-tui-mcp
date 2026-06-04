@@ -1,0 +1,18 @@
+{
+  "id": "3905520f-ff0c-4b3b-b261-0c9a79313073",
+  "runtime": "bash",
+  "purpose": "Find test expectations for empty mermaid source",
+  "script_chars": 143,
+  "started_at": "2026-06-04T12:29:57.503Z",
+  "finished_at": "2026-06-04T12:29:57.793Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 290,
+  "stdout_bytes": 532,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3905520f-ff0c-4b3b-b261-0c9a79313073.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3905520f-ff0c-4b3b-b261-0c9a79313073.stderr"
+}

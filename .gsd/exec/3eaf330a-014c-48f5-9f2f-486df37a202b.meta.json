@@ -1,0 +1,18 @@
+{
+  "id": "3eaf330a-014c-48f5-9f2f-486df37a202b",
+  "runtime": "bash",
+  "purpose": "Test 7: writeFile retry on EAGAIN with dirs created",
+  "script_chars": 749,
+  "started_at": "2026-06-04T12:26:36.510Z",
+  "finished_at": "2026-06-04T12:26:37.098Z",
+  "exit_code": 1,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 588,
+  "stdout_bytes": 19,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3eaf330a-014c-48f5-9f2f-486df37a202b.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\3eaf330a-014c-48f5-9f2f-486df37a202b.stderr"
+}

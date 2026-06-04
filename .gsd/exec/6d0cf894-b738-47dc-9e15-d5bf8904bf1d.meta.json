@@ -1,0 +1,18 @@
+{
+  "id": "6d0cf894-b738-47dc-9e15-d5bf8904bf1d",
+  "runtime": "bash",
+  "purpose": "View existing stderr log",
+  "script_chars": 23,
+  "started_at": "2026-06-04T12:23:33.331Z",
+  "finished_at": "2026-06-04T12:23:33.530Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 199,
+  "stdout_bytes": 426,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\6d0cf894-b738-47dc-9e15-d5bf8904bf1d.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\6d0cf894-b738-47dc-9e15-d5bf8904bf1d.stderr"
+}
