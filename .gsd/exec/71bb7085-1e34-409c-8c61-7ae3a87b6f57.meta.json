@@ -1,0 +1,18 @@
+{
+  "id": "71bb7085-1e34-409c-8c61-7ae3a87b6f57",
+  "runtime": "bash",
+  "purpose": "Run npm run test:coverage to verify >=80% line coverage",
+  "script_chars": 188,
+  "started_at": "2026-06-04T07:12:34.908Z",
+  "finished_at": "2026-06-04T07:12:43.082Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 8174,
+  "stdout_bytes": 6387,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\71bb7085-1e34-409c-8c61-7ae3a87b6f57.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\71bb7085-1e34-409c-8c61-7ae3a87b6f57.stderr"
+}

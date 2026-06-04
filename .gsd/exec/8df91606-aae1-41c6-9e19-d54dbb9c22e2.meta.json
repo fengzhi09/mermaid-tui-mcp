@@ -1,0 +1,18 @@
+{
+  "id": "8df91606-aae1-41c6-9e19-d54dbb9c22e2",
+  "runtime": "bash",
+  "purpose": "Parse sanity + test inventory + CI workflow existence",
+  "script_chars": 634,
+  "started_at": "2026-06-04T07:12:17.207Z",
+  "finished_at": "2026-06-04T07:12:18.393Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 1186,
+  "stdout_bytes": 1184,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\8df91606-aae1-41c6-9e19-d54dbb9c22e2.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\8df91606-aae1-41c6-9e19-d54dbb9c22e2.stderr"
+}

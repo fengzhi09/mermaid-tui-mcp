@@ -1,0 +1,18 @@
+{
+  "id": "847f3532-26d8-4090-8c44-0893e4c6a606",
+  "runtime": "bash",
+  "purpose": "Verify README Testing section, eval file count, and todo presence",
+  "script_chars": 402,
+  "started_at": "2026-06-04T07:14:45.134Z",
+  "finished_at": "2026-06-04T07:14:45.537Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 403,
+  "stdout_bytes": 1159,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\847f3532-26d8-4090-8c44-0893e4c6a606.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\847f3532-26d8-4090-8c44-0893e4c6a606.stderr"
+}

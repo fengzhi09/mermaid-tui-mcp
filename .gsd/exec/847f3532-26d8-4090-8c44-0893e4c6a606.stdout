@@ -1,0 +1,21 @@
+===== README Testing section check =====
+126:## Testing
+128:Run the test suite with `npm test`. Get a coverage report with `npm run test:coverage` (target: **≥80% lines**, enforced by `vitest.config.mjs`).
+135:- **CI** — every push and pull request to `main` / `master` / `milestone/*` runs `npm test` on **Node 22 and Node 24** in parallel via `.github/workflows/ci.yml`. The coverage threshold is enforced on the Node 24 leg, and the `coverage/` directory is uploaded as a workflow artifact.
+
+===== Eval test files (10 required) =====
+eval-01-tcp-handshake.test.mjs
+eval-02-three-flows.test.mjs
+eval-03-gantt.test.mjs
+eval-04-malformed.test.mjs
+eval-05-two-renders.test.mjs
+eval-06-er-diagram.test.mjs
+eval-07-oversized.test.mjs
+eval-08-draw-anything.test.mjs
+eval-09-pin-tool.test.mjs
+eval-10-file-link.test.mjs
+
+===== it.todo / it.skip presence =====
+tests/evals/eval-09-pin-tool.test.mjs:// pin_mermaid; replace this it.todo with a real assertion that
+tests/evals/eval-09-pin-tool.test.mjs:describe("eval-09: pin_mermaid over stdio MCP — S02 will replace this it.todo with a real assertion", () => {
+tests/evals/eval-09-pin-tool.test.mjs:	it.todo(

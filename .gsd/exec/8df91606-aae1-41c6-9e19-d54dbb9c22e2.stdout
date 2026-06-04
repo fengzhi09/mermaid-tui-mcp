@@ -1,0 +1,36 @@
+===== Parse sanity check =====
+server.mjs OK
+render.mjs OK
+storage.mjs OK
+helpers.mjs OK
+===== Test file inventory =====
+tests/evals/eval-01-tcp-handshake.test.mjs
+tests/evals/eval-02-three-flows.test.mjs
+tests/evals/eval-03-gantt.test.mjs
+tests/evals/eval-04-malformed.test.mjs
+tests/evals/eval-05-two-renders.test.mjs
+tests/evals/eval-06-er-diagram.test.mjs
+tests/evals/eval-07-oversized.test.mjs
+tests/evals/eval-08-draw-anything.test.mjs
+tests/evals/eval-09-pin-tool.test.mjs
+tests/evals/eval-10-file-link.test.mjs
+tests/helpers/render-fixture.mjs
+tests/helpers/server.mjs
+tests/helpers/storage-fixture.mjs
+tests/integration/http.test.mjs
+tests/integration/stdio-mcp.test.mjs
+tests/unit/render.test.mjs
+tests/unit/sanity.test.mjs
+tests/unit/server-helpers.test.mjs
+tests/unit/storage.test.mjs
+===== CI workflow check =====
+-rw-r--r-- 1 ace12 197609 2155  6月  4 15:06 .github/workflows/ci.yml
+===== Verify-when check: package.json scripts =====
+{
+  "start": "node src/server.mjs",
+  "start:http": "MERMAID_RENDERER_HTTP=1 node src/server.mjs",
+  "dev": "node --watch src/server.mjs",
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:coverage": "vitest run --coverage"
+}

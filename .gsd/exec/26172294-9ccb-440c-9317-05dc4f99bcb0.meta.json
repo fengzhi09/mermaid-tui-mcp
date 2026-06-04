@@ -1,0 +1,18 @@
+{
+  "id": "26172294-9ccb-440c-9317-05dc4f99bcb0",
+  "runtime": "bash",
+  "purpose": "Verify CI workflow structure has all required fields",
+  "script_chars": 1448,
+  "started_at": "2026-06-04T07:14:32.311Z",
+  "finished_at": "2026-06-04T07:14:32.600Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 289,
+  "stdout_bytes": 471,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\26172294-9ccb-440c-9317-05dc4f99bcb0.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\26172294-9ccb-440c-9317-05dc4f99bcb0.stderr"
+}

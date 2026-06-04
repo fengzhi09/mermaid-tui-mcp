@@ -1,0 +1,19 @@
+===== CI workflow YAML structure check =====
+✓ name: CI
+✓ on.push
+✓ branches main/master/milestone/*
+✓ pull_request trigger
+✓ runs-on ubuntu-latest
+✓ matrix [22, 24]
+✓ actions/checkout@v4
+✓ actions/setup-node@v4
+✓ cache npm
+✓ npm ci
+✓ npm test
+✓ npm run test:coverage
+✓ matrix.node-version == 24 gate
+✓ actions/upload-artifact@v4
+✓ coverage/ path
+✗ coverage-${{ matrix.node-version }} artifact name
+✓ fail-fast false
+===== exit: 1 =====

@@ -1,0 +1,82 @@
+===== npm run test:coverage =====
+Setting arrow from [ { name: [32m'AS1'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'RP1'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:     RP1 --> AS1
+Parsing line:     RP1
+Parsing line: AS1
+Setting arrow from [ { name: [32m'RP1'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'AS1'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:     AS1 --> RP1
+Parsing line:     AS1
+Parsing line: RP1
+Setting arrow from [ { name: [32m'AS1'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'RP1'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:   end
+Parsing remaining text to node   end
+Parsing line:   subgraph ClientCreds["OAuth2 Client Credentials"]
+Parsing remaining text to node   subgraph ClientCreds["OAuth2 Client Credentials"]
+Parsing line:     direction TB
+Parsing remaining text to node     direction TB
+Parsing line:     S1[Service] --> AS2[Auth Server]
+Parsing line:     S1[Service]
+Parsing line: AS2[Auth Server]
+Setting arrow from [ { name: [32m'S1[Service]'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'AS2[Auth Server]'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:     AS2 --> S1
+Parsing line:     AS2
+Parsing line: S1
+Setting arrow from [ { name: [32m'AS2'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'S1'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:   end
+Parsing remaining text to node   end
+Parsing line:   subgraph Implicit["OIDC Implicit"]
+Parsing remaining text to node   subgraph Implicit["OIDC Implicit"]
+Parsing line:     direction TB
+Parsing remaining text to node     direction TB
+Parsing line:     U2[User] --> RP2[Relying Party]
+Parsing line:     U2[User]
+Parsing line: RP2[Relying Party]
+Setting arrow from [ { name: [32m'U2[User]'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'RP2[Relying Party]'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:     RP2 --> AS3[Auth Server]
+Parsing line:     RP2
+Parsing line: AS3[Auth Server]
+Setting arrow from [ { name: [32m'RP2'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'AS3[Auth Server]'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:     AS3 --> U2
+Parsing line:     AS3
+Parsing line: U2
+Setting arrow from [ { name: [32m'AS3'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'U2'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:     AS3 --> RP2
+Parsing line:     AS3
+Parsing line: RP2
+Setting arrow from [ { name: [32m'AS3'[39m, styleClass: [32m''[39m } ] to [ { name: [32m'RP2'[39m, styleClass: [32m''[39m } ] with label 
+Parsing line:   end
+Parsing remaining text to node   end
+
+ [32m✓[39m tests/evals/eval-10-file-link.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 3088[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-10: fileLink from render_mermaid starts with file:/// and points to an existing .html on disk[2m > [22mreturns a file:/// link to a reachable .html on the host filesystem [33m 3087[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-02-three-flows.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 2182[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-02: three auth flows render in a single call (one id, one diagram)[2m > [22mreturns a single { id, svg, ascii, sourceLength } for a 3-subgraph flowchart [33m 2181[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-06-er-diagram.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 3126[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-06: erDiagram with 5 entities and 4 relationships renders via stdio MCP[2m > [22mdoes not throw and returns a non-empty fileLink for the erDiagram [33m 3125[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-05-two-renders.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 3127[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-05: two render_mermaid calls produce two different ids[2m > [22mfirst and second render return distinct ids (and distinct fileLinks) [33m 3125[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-08-draw-anything.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 3151[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-08: 'draw anything' default — a small system architecture flowchart renders[2m > [22mdoes not throw and returns a non-empty result for the default architecture diagram [33m 3149[2mms[22m[39m
+ [32m✓[39m tests/integration/http.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 3196[2mms[22m[39m
+   [33m[2m✓[22m[39m HTTP integration[2m > [22mserves /health, /raw/svg, /pin, and /view for a freshly rendered diagram [33m 3194[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs [2m([22m[2m3 tests[22m[2m)[22m[33m 4638[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mcompletes the initialize handshake and reports serverInfo.name === 'mermaid-tui-mcp' [33m 1413[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mlists render_mermaid in tools/list with a non-empty description and inputSchema.required.includes('code') [33m 1273[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrenders a diagram via tools/call and returns { id, ascii, fileLink } with fileLink starting with file:/// and ending with .html [33m 1950[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m15 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (16)[39m
+[2m      Tests [22m [1m[32m47 passed[39m[22m[2m | [22m[90m1 todo[39m[90m (48)[39m
+[2m   Start at [22m 15:12:37
+[2m   Duration [22m 5.51s[2m (transform 413ms, setup 0ms, collect 5.32s, tests 29.60s, environment 4ms, prepare 3.16s)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------|---------|----------|---------|---------|-------------------
+File         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------|---------|----------|---------|---------|-------------------
+All files    |      54 |    89.18 |   91.66 |      54 |                   
+ helpers.mjs |     100 |    93.75 |     100 |     100 | 26                
+ render.mjs  |     100 |       88 |   83.33 |     100 | 43,85,92          
+ server.mjs  |       0 |        0 |       0 |       0 | 1-220             
+ storage.mjs |    96.8 |    90.62 |     100 |    96.8 | 58-59,122-123     
+-------------|---------|----------|---------|---------|-------------------
+===== exit code: 0 =====

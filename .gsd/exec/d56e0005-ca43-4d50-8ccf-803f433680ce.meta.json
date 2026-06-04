@@ -1,0 +1,18 @@
+{
+  "id": "d56e0005-ca43-4d50-8ccf-803f433680ce",
+  "runtime": "bash",
+  "purpose": "Run npm test to verify all tests pass",
+  "script_chars": 162,
+  "started_at": "2026-06-04T07:12:22.018Z",
+  "finished_at": "2026-06-04T07:12:30.176Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 8158,
+  "stdout_bytes": 5045,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d56e0005-ca43-4d50-8ccf-803f433680ce.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\d56e0005-ca43-4d50-8ccf-803f433680ce.stderr"
+}
