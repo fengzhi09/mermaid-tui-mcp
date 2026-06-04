@@ -47,7 +47,7 @@ What remains before M001 is end-to-end usable: S04 owns the real Claude Code + g
   - Files: `src/logger.mjs`, `src/counters.mjs`, `tests/unit/logger.test.mjs`, `tests/unit/counters.test.mjs`, `src/helpers.mjs`, `src/server.mjs`, `tests/unit/server-helpers.test.mjs`
   - Verify: npm test -- tests/unit/logger.test.mjs tests/unit/counters.test.mjs tests/unit/server-helpers.test.mjs
 
-- [ ] **T02: Build errors module with the full -32001..-32009 + -32602 code set** `est:60m`
+- [x] **T02: Build errors module with the full -32001..-32009 + -32602 code set** `est:60m`
   Why: R020 (the error contract) and the 3 retry-path requirements (R015, R016, R017, R018) all need a centralized error code namespace + classification function. S02's tools.mjs already ships a partial implementation: NotFoundError (-32005, retryable: false) and StorageWriteError (-32004, retryable: true), used by 4 of the 7 tools. S03 must add the missing codes (-32001 render_timeout, -32002 render_failed, -32003 jsdom_init_failed, -32005 storage_read_failed (new class, retryable: true — distinct from NotFoundError which is retryable: false), -32008 port_in_use, -32009 mcp_protocol_violation) and the classifyDomainError function that maps the existing render.mjs Error throws (mermaid parse error, empty source, source too long) to the right codes without breaking the 9 existing eval tests that assert on the message text. The "code namespace" ambiguity (MCP SDK uses -32000/-32001 for transport-level codes) must be documented in a header comment so future readers don't collide.
   - Files: `src/errors.mjs`, `tests/unit/errors.test.mjs`, `src/tools.mjs`
   - Verify: npm test -- tests/unit/errors.test.mjs
