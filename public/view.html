@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mermaid {{ID}}</title>
+  <title>{{TITLE}} · Mermaid {{ID}}</title>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -28,11 +28,14 @@
     .code-block { background: #1f2937; color: #d1d5db; border-radius: 8px; padding: 16px 20px; margin: 0 24px 32px; font-family: ui-monospace, SFMono-Regular, "SF Mono", monospace; font-size: 12px; white-space: pre; overflow: auto; line-height: 1.5; }
     .pin-badge { color: #f59e0b; }
     .empty-msg { color: #6b7280; font-style: italic; }
+    .diagram-title { font-size: 14px; font-weight: 500; color: #f9fafb; margin: 0; }
+    .diagram-title:empty { display: none; }
   </style>
 </head>
 <body>
   <div class="topbar">
     <span class="id">{{ID}}</span>
+    <h1 class="diagram-title" id="diagram-title">{{TITLE}}</h1>
     <span class="meta">created {{CREATED_AT}}</span>
     <span class="meta">{{SOURCE_LENGTH}} chars</span>
     <span id="pin-badge"></span>
@@ -61,6 +64,8 @@
 
   <script>
     const ID = {{ID_JSON}};
+    const TITLE = {{TITLE_JSON}};
+    document.title = TITLE ? `${TITLE} · Mermaid ${ID}` : `Mermaid ${ID}`;
     const svg = document.getElementById('mermaid-svg');
     const stage = document.getElementById('stage');
     const pinBtn = document.getElementById('pin-btn');

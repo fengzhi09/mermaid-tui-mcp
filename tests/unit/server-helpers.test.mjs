@@ -103,11 +103,16 @@ describe("renderView", () => {
 		expect(html).toContain(JSON.stringify(id));
 		// html-escaped code appears (in <pre> via {{CODE}})
 		expect(html).toContain(escapeHtml(entry.code));
-		// the raw unescaped form must not appear in the html context (only inside
-		// the JS string literal, which is bounded by quotes).
-		// Specifically: <title>...</title> and <span class="id">...</span> both
-		// use the escaped form. We check the <title> here.
-		expect(html).toMatch(/<title>Mermaid &lt;script&gt;alert\(1\)&lt;\/script&gt;<\/title>/);
+		// raw unescaped form must not appear in the html context. The S02
+		// template puts the title prefix as {{TITLE}} (empty for this entry)
+		// so the rendered <title> degrades to " · Mermaid <id>". The escaped
+		// id must still land in the <title> element AND the <span class="id">.
+		expect(html).toMatch(/<title>\s*·\s*Mermaid &lt;script&gt;alert\(1\)&lt;\/script&gt;<\/title>/);
+		expect(html).toMatch(/<span class="id">&lt;script&gt;alert\(1\)&lt;\/script&gt;<\/span>/);
+		// The h1.title slot is also empty (entry.title is unset).
+		expect(html).toMatch(/<h1 class="diagram-title" id="diagram-title"><\/h1>/);
+		// {{TITLE_JSON}} resolves to "" when no title.
+		expect(html).toContain('const TITLE = "";');
 	});
 });
 

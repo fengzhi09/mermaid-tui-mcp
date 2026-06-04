@@ -23,17 +23,16 @@
 // on every put, and every hour.
 
 import { createServer } from "node:http";
-import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { render } from "./render.mjs";
 import { LocalFsStorage as Storage, TTL_DAYS } from "./storage/LocalFsStorage.mjs";
 import { renderView, extractSvgBody, escapeHtml, fileUrlFor, httpError, log } from "./helpers.mjs";
+import { registerTools } from "./tools.mjs";
 
 export { renderView } from "./helpers.mjs";
 export { extractSvgBody } from "./helpers.mjs";
@@ -53,7 +52,19 @@ const HTTP_ENABLED = process.env.MERMAID_RENDERER_HTTP === "1";
 const HTTP_PORT = Number.parseInt(process.env.MERMAID_RENDERER_PORT || "5300", 10);
 const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 
-const storage = new Storage(DATA);
+// StorageBackend factory — the env switch exists (MEM002) so M002's OssStorage
+// can plug in without re-plumbing server.mjs. Today only "local" (default) and
+// "oss" (stub) are recognised; "oss" logs a stderr line and falls through to
+// LocalFsStorage — the actual OSS impl lands in M002.
+const BACKEND = process.env.MERMAID_RENDERER_BACKEND;
+let storage;
+if (BACKEND === "oss") {
+	log("MERMAID_RENDERER_BACKEND=oss: 'oss' backend is a stub for M002; falling back to LocalFsStorage");
+	storage = new Storage(DATA);
+} else {
+	// "local" or unset — default
+	storage = new Storage(DATA);
+}
 await storage.load();
 
 setInterval(() => {
@@ -69,54 +80,18 @@ const mcp = new McpServer(
 	{ capabilities: { tools: {} } },
 );
 
-mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
-	tools: [
-		{
-			name: "render_mermaid",
-			description:
-				"Render a Mermaid diagram source string into terminal-safe ASCII art. " +
-				"ALWAYS call this tool before emitting a ```mermaid code fence in your reply. " +
-				"Return value: { id, ascii, fileLink, httpLink }. " +
-				"Use `ascii` in your reply (replacing the raw mermaid source). " +
-				"`fileLink` opens a self-contained HTML viewer at file:// in any browser. " +
-				"`httpLink` opens the same viewer at http://127.0.0.1:5300 (only works if the " +
-				"standalone HTTP daemon was started separately; ignore the 404 if not).",
-			inputSchema: {
-				type: "object",
-				properties: {
-					code: {
-						type: "string",
-						description: "Mermaid diagram source. E.g. 'graph TD\\n  A-->B'.",
-					},
-				},
-				required: ["code"],
-				additionalProperties: false,
-			},
-		},
-	],
-}));
-
-mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
-	if (req.params.name !== "render_mermaid") {
-		throw new Error(`unknown tool: ${req.params.name}`);
-	}
-	const code = req.params.arguments?.code;
-	if (typeof code !== "string" || code.length === 0) {
-		throw new Error("`code` must be a non-empty string");
-	}
-	const { id, svg, ascii, sourceLength } = await render(code);
-	await storage.put(id, code, svg, sourceLength);
-	const entry = await storage.pruneIfExpired(id);
-	if (!entry) throw new Error(`storage: put succeeded but entry vanished for ${id}`);
-	const html = await renderView(id, entry, svg);
-	await writeFile(join(DATA, "blobs", `${id}.html`), html, "utf-8");
-	const out = {
-		id,
-		ascii,
-		fileLink: fileUrlFor(join(DATA, "blobs", `${id}.html`)),
-		httpLink: HTTP_ENABLED ? `http://${HTTP_HOST}:${HTTP_PORT}/view?id=${id}` : null,
-	};
-	return { content: [{ type: "text", text: JSON.stringify(out) }] };
+// Wire the 7 stdio MCP tools (render_mermaid + pin_mermaid + unpin_mermaid +
+// list_diagrams + get_diagram + delete_mermaid + search_diagrams) through the
+// single seam in src/tools.mjs. The wrapper enforces the R020 envelope and
+// adds elapsed_ms; per-tool handlers + their zod schemas live alongside it.
+registerTools(mcp, {
+	storage,
+	render,
+	renderView,
+	dataDir: DATA,
+	httpEnabled: HTTP_ENABLED,
+	httpHost: HTTP_HOST,
+	httpPort: HTTP_PORT,
 });
 
 const transport = new StdioServerTransport();

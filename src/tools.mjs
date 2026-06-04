@@ -24,6 +24,7 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { z } from "zod";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { fileUrlFor } from "./helpers.mjs";
 
@@ -303,53 +304,82 @@ const TOOL_DEFS = [
 
 // ---------------------------------------------------------------------------
 // registerTools(mcp, ctx) — the single seam that talks to the MCP SDK.
-// Each call to mcp.registerTool wires one entry from TOOL_DEFS. The callback
-// enforces the R020 envelope: success → {content: [{type:"text", text:
-// JSON.stringify({...payload, elapsed_ms})}]}; failure (caught, tagged
-// error) → {isError: true, content: [{type:"text", text: JSON.stringify(
-// {code, message, retryable})}]}. Anything else re-throws (the SDK turns
-// unknown throws into JSON-RPC -32603).
+// Installs two request handlers on `mcp` (the lower-level Server class which
+// is what `@modelcontextprotocol/sdk/server` exports):
+//   - ListToolsRequestSchema: returns the 7 tool defs (name + description +
+//     zod→JSON-schema). The JSON schema is built via z.toJSONSchema() so
+//     LLM clients see a draft-07 inputSchema (no `z.NEVER` / no `._def`).
+//   - CallToolRequestSchema: dispatches by name to TOOL_DEFS[i].run, then
+//     enforces the R020 envelope. Success → {content: [{type:"text", text:
+//     JSON.stringify({...payload, elapsed_ms})}]}. Tagged failure (e.code is
+//     a number) → {isError: true, content: [{type:"text", text: JSON.stringify(
+//     {code, message, retryable, elapsed_ms})}]}. Unknown throw → re-thrown
+//     (the SDK turns it into JSON-RPC -32603).
+//
+// Why setRequestHandler (not mcp.registerTool): the public `@modelcontextprotocol/sdk/server`
+// export is the low-level Server class; the high-level McpServer (with
+// registerTool) lives in a deeper file that's not in the package's public
+// exports map. Using setRequestHandler keeps server.mjs on the SDK's
+// documented public surface.
 // ---------------------------------------------------------------------------
 
 /**
  * @param {{
- *   registerTool: (
- *     name: string,
- *     config: {description?: string, inputSchema?: unknown},
- *     cb: (args: unknown) => Promise<unknown>
- *   ) => unknown,
- * }} mcp  The MCP server (or a fake in tests). Only `registerTool` is touched.
+ *   setRequestHandler: (schema: unknown, handler: (req: unknown) => unknown) => unknown,
+ * }} mcp  The MCP Server (or a fake in tests). Only `setRequestHandler` is touched.
  * @param {object} ctx  The runtime context (storage, render, renderView, dataDir, http*).
  */
 export function registerTools(mcp, ctx) {
-	for (const tool of TOOL_DEFS) {
-		mcp.registerTool(
-			tool.name,
-			{ description: tool.description, inputSchema: tool.input },
-			async (args) => {
-				const startNs = process.hrtime.bigint();
-				try {
-					const payload = await tool.run(args, ctx);
-					const elapsed_ms = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
-					return { content: [{ type: "text", text: JSON.stringify({ ...payload, elapsed_ms }) }] };
-				} catch (e) {
-					if (e && typeof e === "object" && typeof e.code === "number") {
-						const elapsed_ms = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
-						const body = {
-							code: e.code,
-							message: String(e.message ?? e),
-							retryable: !!e.retryable,
-							elapsed_ms,
-						};
-						return {
-							isError: true,
-							content: [{ type: "text", text: JSON.stringify(body) }],
-						};
-					}
-					// Unknown error: re-throw. The SDK converts it to JSON-RPC -32603.
-					throw e;
-				}
-			},
-		);
-	}
+	const byName = new Map(TOOL_DEFS.map((t) => [t.name, t]));
+
+	mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
+		tools: TOOL_DEFS.map((t) => ({
+			name: t.name,
+			description: t.description,
+			inputSchema: z.toJSONSchema(t.input, { target: "draft-07" }),
+		})),
+	}));
+
+	mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
+		const { name, arguments: args } = req.params || {};
+		const tool = byName.get(name);
+		if (!tool) {
+			return {
+				isError: true,
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify({
+							code: -32601,
+							message: `unknown tool: ${name}`,
+							retryable: false,
+							elapsed_ms: 0,
+						}),
+					},
+				],
+			};
+		}
+		const startNs = process.hrtime.bigint();
+		try {
+			const payload = await tool.run(args ?? {}, ctx);
+			const elapsed_ms = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+			return { content: [{ type: "text", text: JSON.stringify({ ...payload, elapsed_ms }) }] };
+		} catch (e) {
+			if (e && typeof e === "object" && typeof e.code === "number") {
+				const elapsed_ms = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+				const body = {
+					code: e.code,
+					message: String(e.message ?? e),
+					retryable: !!e.retryable,
+					elapsed_ms,
+				};
+				return {
+					isError: true,
+					content: [{ type: "text", text: JSON.stringify(body) }],
+				};
+			}
+			// Unknown error: re-throw. The SDK converts it to JSON-RPC -32603.
+			throw e;
+		}
+	});
 }

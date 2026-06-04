@@ -26,7 +26,9 @@ export async function renderView(id, entry, svg, withPinButton = false) {
 		.replace(/\{\{SOURCE_LENGTH\}\}/g, String(entry.sourceLength ?? entry.code.length))
 		.replace(/\{\{SVG_BODY\}\}/g, extractSvgBody(svg))
 		.replace(/\{\{CODE\}\}/g, escapeHtml(entry.code))
-		.replace(/\{\{WITH_PIN\}\}/g, withPinButton ? "true" : "false");
+		.replace(/\{\{WITH_PIN\}\}/g, withPinButton ? "true" : "false")
+		.replace(/\{\{TITLE\}\}/g, entry.title ? escapeHtml(entry.title) : "")
+		.replace(/\{\{TITLE_JSON\}\}/g, JSON.stringify(entry.title ?? ""));
 }
 
 export function extractSvgBody(svg) {

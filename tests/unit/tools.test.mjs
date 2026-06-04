@@ -19,6 +19,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { NotFoundError, registerTools, deleteMermaid, getDiagram, listDiagrams, pinMermaid, renderMermaid, searchDiagrams, unpinMermaid } from "../../src/tools.mjs";
 import { render as realRender } from "../../src/render.mjs";
@@ -369,22 +370,33 @@ describe("registerTools()", () => {
 	});
 
 	function fakeMcp() {
+		const handlers = new Map();
 		return {
-			registerTool(name, config, cb) {
-				recorded.push({ name, config, cb });
+			setRequestHandler(schema, handler) {
+				handlers.set(schema, handler);
+				recorded.push({ schema, handler });
+			},
+			// Test ergonomics: a proxy that calls the registered CallTool handler
+			// with the same wire shape the real SDK sends, but lets tests pass
+			// `(toolName, args)` instead of `{params:{name,arguments}}`.
+			async callTool(toolName, args) {
+				const h = handlers.get(CallToolRequestSchema);
+				if (!h) throw new Error("CallToolRequestSchema handler not registered");
+				return h({ params: { name: toolName, arguments: args } });
+			},
+			async listTools() {
+				const h = handlers.get(ListToolsRequestSchema);
+				if (!h) throw new Error("ListToolsRequestSchema handler not registered");
+				return h({});
 			},
 		};
 	}
 
-	function getHandler(name) {
-		const entry = recorded.find((r) => r.name === name);
-		if (!entry) throw new Error(`tool not registered: ${name}`);
-		return entry.cb;
-	}
-
-	it("registers all 7 tools with description + inputSchema set", () => {
-		registerTools(fakeMcp(), fixture.ctx);
-		const names = recorded.map((r) => r.name).sort();
+	it("registers all 7 tools with description + inputSchema set", async () => {
+		const mcp = fakeMcp();
+		registerTools(mcp, fixture.ctx);
+		const list = await mcp.listTools();
+		const names = list.tools.map((t) => t.name).sort();
 		expect(names).toEqual([
 			"delete_mermaid",
 			"get_diagram",
@@ -394,18 +406,20 @@ describe("registerTools()", () => {
 			"search_diagrams",
 			"unpin_mermaid",
 		]);
-		for (const r of recorded) {
-			expect(typeof r.config.description).toBe("string");
-			expect(r.config.description.length).toBeGreaterThan(0);
-			// inputSchema is the zod object — truthy and has .shape (zod v4 contract)
-			expect(r.config.inputSchema).toBeTruthy();
+		for (const t of list.tools) {
+			expect(typeof t.description).toBe("string");
+			expect(t.description.length).toBeGreaterThan(0);
+			// inputSchema is a JSON schema (draft-07), produced from the zod
+			// object via z.toJSONSchema(). Must be a plain object with `type`.
+			expect(t.inputSchema).toBeTruthy();
+			expect(typeof t.inputSchema).toBe("object");
 		}
 	});
 
-	it("renders a success R020 envelope: { content: [{type:'text', text: JSON}], elapsed_ms >= 0}", async () => {
-		registerTools(fakeMcp(), fixture.ctx);
-		const cb = getHandler("render_mermaid");
-		const result = await cb({ code: VALID_GRAPH });
+	it("renders a success R020 envelope: { content: [{type:'text', text: JSON}], elapsed_ms >= 0", async () => {
+		const mcp = fakeMcp();
+		registerTools(mcp, fixture.ctx);
+		const result = await mcp.callTool("render_mermaid", { code: VALID_GRAPH });
 		expect(result.isError).toBeUndefined();
 		expect(Array.isArray(result.content)).toBe(true);
 		expect(result.content).toHaveLength(1);
@@ -418,9 +432,9 @@ describe("registerTools()", () => {
 	});
 
 	it("renders a tagged-error R020 envelope: isError: true, code: -32005, retryable: false, elapsed_ms >= 0", async () => {
-		registerTools(fakeMcp(), fixture.ctx);
-		const cb = getHandler("pin_mermaid");
-		const result = await cb({ id: "missing-id" });
+		const mcp = fakeMcp();
+		registerTools(mcp, fixture.ctx);
+		const result = await mcp.callTool("pin_mermaid", { id: "missing-id" });
 		expect(result.isError).toBe(true);
 		expect(Array.isArray(result.content)).toBe(true);
 		expect(result.content[0].type).toBe("text");
@@ -433,27 +447,28 @@ describe("registerTools()", () => {
 	});
 
 	it("renders each CRUD tool's success envelope with elapsed_ms", async () => {
-		registerTools(fakeMcp(), fixture.ctx);
+		const mcp = fakeMcp();
+		registerTools(mcp, fixture.ctx);
+
 		// find the just-rendered diagram's id
-		const renderCb = getHandler("render_mermaid");
-		const renderResult = await renderCb({ code: VALID_GRAPH, title: "crud" });
+		const renderResult = await mcp.callTool("render_mermaid", { code: VALID_GRAPH, title: "crud" });
 		const id = JSON.parse(renderResult.content[0].text).id;
 
 		// pin
-		const pinResult = await getHandler("pin_mermaid")({ id });
+		const pinResult = await mcp.callTool("pin_mermaid", { id });
 		const pinBody = JSON.parse(pinResult.content[0].text);
 		expect(pinBody).toMatchObject({ id, pinned: true });
 		expect(pinBody.elapsed_ms).toBeTypeOf("number");
 
 		// list — items don't carry id (it's the map key), so we match by title.
-		const listResult = await getHandler("list_diagrams")({ limit: 5 });
+		const listResult = await mcp.callTool("list_diagrams", { limit: 5 });
 		const listBody = JSON.parse(listResult.content[0].text);
 		expect(Array.isArray(listBody.items)).toBe(true);
 		expect(listBody.items.some((e) => e.title === "crud")).toBe(true);
 		expect(listBody.elapsed_ms).toBeTypeOf("number");
 
 		// get
-		const getResult = await getHandler("get_diagram")({ id });
+		const getResult = await mcp.callTool("get_diagram", { id });
 		const getBody = JSON.parse(getResult.content[0].text);
 		expect(getBody.id).toBe(id);
 		expect(getBody.title).toBe("crud");
@@ -461,20 +476,20 @@ describe("registerTools()", () => {
 		expect(getBody.elapsed_ms).toBeTypeOf("number");
 
 		// search
-		const searchResult = await getHandler("search_diagrams")({ query: "crud" });
+		const searchResult = await mcp.callTool("search_diagrams", { query: "crud" });
 		const searchBody = JSON.parse(searchResult.content[0].text);
 		expect(searchBody.items.length).toBeGreaterThan(0);
 		expect(searchBody.items[0].titleMatch).toBe(true);
 		expect(searchBody.elapsed_ms).toBeTypeOf("number");
 
 		// delete
-		const delResult = await getHandler("delete_mermaid")({ id });
+		const delResult = await mcp.callTool("delete_mermaid", { id });
 		const delBody = JSON.parse(delResult.content[0].text);
 		expect(delBody).toEqual({ id, deleted: true, elapsed_ms: delBody.elapsed_ms });
 		expect(delBody.elapsed_ms).toBeTypeOf("number");
 
 		// unpin — using a non-existent id to exercise the tagged-error envelope
-		const unpinResult = await getHandler("unpin_mermaid")({ id: "never-existed" });
+		const unpinResult = await mcp.callTool("unpin_mermaid", { id: "never-existed" });
 		const unpinBody = JSON.parse(unpinResult.content[0].text);
 		expect(unpinBody.code).toBe(-32005);
 		expect(unpinBody.elapsed_ms).toBeTypeOf("number");
@@ -491,9 +506,9 @@ describe("registerTools()", () => {
 				},
 			},
 		};
-		registerTools(fakeMcp(), explodyCtx);
-		const cb = getHandler("pin_mermaid");
-		await expect(cb({ id: "any" })).rejects.toThrow("boom — not a tagged error");
+		const mcp = fakeMcp();
+		registerTools(mcp, explodyCtx);
+		await expect(mcp.callTool("pin_mermaid", { id: "any" })).rejects.toThrow("boom — not a tagged error");
 	});
 
 	it("records the render_warnings path through the wrapper (warnings key on success envelope)", async () => {
@@ -506,9 +521,9 @@ describe("registerTools()", () => {
 				sourceLength: 6,
 			}),
 		};
-		registerTools(fakeMcp(), explodyRender);
-		const cb = getHandler("render_mermaid");
-		const result = await cb({ code: VALID_GRAPH });
+		const mcp = fakeMcp();
+		registerTools(mcp, explodyRender);
+		const result = await mcp.callTool("render_mermaid", { code: VALID_GRAPH });
 		const body = JSON.parse(result.content[0].text);
 		expect(body.warnings).toEqual(["ascii_failed: stubbed"]);
 		expect(body.id).toBe("mWarn2");
