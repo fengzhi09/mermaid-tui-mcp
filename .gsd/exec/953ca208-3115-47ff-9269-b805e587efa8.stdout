@@ -1,0 +1,13 @@
+node:internal/modules/esm/get_format:236
+  throw new ERR_UNKNOWN_FILE_EXTENSION(ext, filepath);
+        ^
+
+TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".html" for C:\Users\ace12\Documents\龙叔智能\codes\mermaid-tui-mcp\.gsd\worktrees\M001\public\view.html
+    at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:236:9)
+    at defaultGetFormat (node:internal/modules/esm/get_format:262:36)
+    at checkSyntax (node:internal/main/check_syntax:67:20) {
+  code: 'ERR_UNKNOWN_FILE_EXTENSION'
+}
+
+Node.js v24.15.0
+view.html may not parse as node --check (HTML, not JS)

@@ -1,0 +1,18 @@
+{
+  "id": "5fabc346-c156-4d20-9d32-4d518f81068d",
+  "runtime": "bash",
+  "purpose": null,
+  "script_chars": 117,
+  "started_at": "2026-06-04T10:20:17.345Z",
+  "finished_at": "2026-06-04T10:20:46.314Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 28969,
+  "stdout_bytes": 3863,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\5fabc346-c156-4d20-9d32-4d518f81068d.stdout",
+  "stderr_path": "C:\\Users\\ace12\\Documents\\龙叔智能\\codes\\mermaid-tui-mcp\\.gsd\\worktrees\\M001\\.gsd\\exec\\5fabc346-c156-4d20-9d32-4d518f81068d.stderr"
+}

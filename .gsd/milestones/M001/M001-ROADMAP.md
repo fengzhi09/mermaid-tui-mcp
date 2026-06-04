@@ -19,7 +19,7 @@
 - [x] **S01: Test + CI foundation** `risk:medium` `depends:[]`
   > After this: npm test 跑通 10 evals 与单元测试;GitHub Actions Node 22+24 全绿;覆盖率报告 ≥ 80% 且 CI 门槛通过
 
-- [ ] **S02: MCP tools - 7 tools, CRUD complete** `risk:high` `depends:[S01]`
+- [x] **S02: MCP tools - 7 tools, CRUD complete** `risk:high` `depends:[S01]`
   > After this: stdio MCP 列 7 工具(render 与 6 资源管理);render 接可选 title 入参;pin_mermaid 后 sweep 不删;list_diagrams 与 search_diagrams 翻页过滤与 title 命中优先;get_diagram 完整对象含 title;delete_mermaid 真删;storage pluggable 接口就绪(LocalFsStorage 默认)
 
 - [ ] **S03: Observability - logs, health, counters, error contract** `risk:medium` `depends:[S01]`

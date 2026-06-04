@@ -1,0 +1,80 @@
+ [32m✓[39m tests/evals/eval-05-two-renders.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 6200[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-05: two render_mermaid calls produce two different ids[2m > [22mfirst and second render return distinct ids (and distinct fileLinks) [33m 6199[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mreturns items with titleMatch: true for title matches (ranks above code matches)
+[22m[39mParsing line:   X-->Y
+Parsing remaining text to node   X-->Y
+
+ [32m✓[39m tests/evals/eval-06-er-diagram.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 6206[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-06: erDiagram with 5 entities and 4 relationships renders via stdio MCP[2m > [22mdoes not throw and returns a non-empty fileLink for the erDiagram [33m 6204[2mms[22m[39m
+ [32m✓[39m tests/evals/eval-08-draw-anything.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 6207[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-08: 'draw anything' default — a small system architecture flowchart renders[2m > [22mdoes not throw and returns a non-empty result for the default architecture diagram [33m 6205[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mpasses limit / cursor / pinned through to storage.search
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mpasses limit / cursor / pinned through to storage.search
+[22m[39mParsing line:   X-->Y
+Parsing remaining text to node   X-->Y
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2msearchDiagrams()[2m > [22m[2mpasses limit / cursor / pinned through to storage.search
+[22m[39mParsing line:   M-->N
+Parsing remaining text to node   M-->N
+
+ [32m✓[39m tests/integration/http.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 6253[2mms[22m[39m
+   [33m[2m✓[22m[39m HTTP integration[2m > [22mserves /health, /raw/svg, /pin, and /view for a freshly rendered diagram [33m 6251[2mms[22m[39m
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mregisters all 7 tools with description + inputSchema set
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders a success R020 envelope: { content: [{type:'text', text: JSON}], elapsed_ms >= 0
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders a success R020 envelope: { content: [{type:'text', text: JSON}], elapsed_ms >= 0
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders a tagged-error R020 envelope: isError: true, code: -32005, retryable: false, elapsed_ms >= 0
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders each CRUD tool's success envelope with elapsed_ms
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrenders each CRUD tool's success envelope with elapsed_ms
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mre-throws unknown errors (does not silently convert to isError:true) so the SDK returns -32603
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mregisterTools()[2m > [22m[2mrecords the render_warnings path through the wrapper (warnings key on success envelope)
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+[90mstdout[2m | tests/unit/tools.test.mjs[2m > [22m[2mhandler input robustness[2m > [22m[2mgetDiagram returns svg as empty string (not undefined) when the blob is missing on disk
+[22m[39mParsing line:   A-->B
+Parsing remaining text to node   A-->B
+
+ [32m✓[39m tests/unit/tools.test.mjs [2m([22m[2m25 tests[22m[2m)[22m[33m 5186[2mms[22m[39m
+   [33m[2m✓[22m[39m renderMermaid()[2m > [22mreturns { id, ascii, fileLink, httpLink: null, title: "" } on success without a title [33m 4091[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs [2m([22m[2m11 tests[22m[2m)[22m[33m 24332[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mcompletes the initialize handshake and reports serverInfo.name === 'mermaid-tui-mcp' [33m 1988[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mlists 7 tools in tools/list with the new CRUD surface [33m 2514[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrenders a diagram via tools/call and returns { id, ascii, fileLink, title, elapsed_ms } [33m 3143[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrenders a diagram with a title and round-trips it through the storage entry [33m 2207[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mpin_mermaid over stdio MCP flips the pinned flag and returns elapsed_ms [33m 2353[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22munpin_mermaid over stdio MCP is the dual of pin_mermaid [33m 2268[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mlist_diagrams over stdio MCP paginates with limit and supports pinned filter [33m 2404[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mget_diagram over stdio MCP returns the full object including title [33m 2286[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP removes entry + blob and returns deleted: true [33m 2198[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22msearch_diagrams over stdio MCP matches title with titleMatch boost [33m 2078[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP returns isError: true with code -32005 for a missing id (strict 404, MEM014) [33m 894[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m18 passed[39m[22m[90m (18)[39m
+[2m      Tests [22m [1m[32m104 passed[39m[22m[90m (104)[39m
+[2m   Start at [22m 18:19:45
+[2m   Duration [22m 25.39s[2m (transform 641ms, setup 0ms, collect 9.48s, tests 84.36s, environment 5ms, prepare 4.09s)[22m
+

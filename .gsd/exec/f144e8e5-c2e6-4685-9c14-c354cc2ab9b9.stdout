@@ -1,0 +1,20 @@
+ [32m✓[39m tests/evals/eval-09-pin-tool.test.mjs [2m([22m[2m1 test[22m[2m)[22m[33m 2434[2mms[22m[39m
+   [33m[2m✓[22m[39m eval-09: pin_mermaid over stdio MCP (S02 flipped from it.todo)[2m > [22mpins the just-rendered diagram so it survives the 7-day TTL sweep [33m 2433[2mms[22m[39m
+ [32m✓[39m tests/integration/stdio-mcp.test.mjs [2m([22m[2m11 tests[22m[2m)[22m[33m 21679[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mcompletes the initialize handshake and reports serverInfo.name === 'mermaid-tui-mcp' [33m 1051[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mlists 7 tools in tools/list with the new CRUD surface [33m 1117[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrenders a diagram via tools/call and returns { id, ascii, fileLink, title, elapsed_ms } [33m 2193[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mrenders a diagram with a title and round-trips it through the storage entry [33m 2291[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mpin_mermaid over stdio MCP flips the pinned flag and returns elapsed_ms [33m 2395[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22munpin_mermaid over stdio MCP is the dual of pin_mermaid [33m 2261[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mlist_diagrams over stdio MCP paginates with limit and supports pinned filter [33m 2466[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mget_diagram over stdio MCP returns the full object including title [33m 2245[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP removes entry + blob and returns deleted: true [33m 2226[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22msearch_diagrams over stdio MCP matches title with titleMatch boost [33m 2406[2mms[22m[39m
+   [33m[2m✓[22m[39m stdio MCP integration[2m > [22mdelete_mermaid over stdio MCP returns isError: true with code -32005 for a missing id (strict 404, MEM014) [33m 1026[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m   Start at [22m 18:21:16
+[2m   Duration [22m 22.56s[2m (transform 53ms, setup 0ms, collect 95ms, tests 24.11s, environment 0ms, prepare 284ms)[22m
+
