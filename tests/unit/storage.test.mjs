@@ -21,7 +21,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LocalFsStorage } from "../../src/storage/LocalFsStorage.mjs";
+import { Counters } from "../../src/counters.mjs";
+import { StorageReadError, StorageWriteError } from "../../src/tools.mjs";
+import {
+	LocalFsStorage,
+	__setReadFileForTesting,
+	__setReadTimeoutForTesting,
+	__setWriteFileForTesting,
+} from "../../src/storage/LocalFsStorage.mjs";
 import { makeTempStorage } from "../helpers/storage-fixture.mjs";
 
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -41,6 +48,12 @@ describe("LocalFsStorage", () => {
 		if (ctx) await ctx.cleanup();
 		ctx = undefined;
 		vi.useRealTimers();
+		// Reset S03 test seams so a test that installs a stub can't leak
+		// into the next test. Each seam's "pass null" branch restores the
+		// real node:fs/promises impl (and the real 5000ms read timeout).
+		__setWriteFileForTesting(null);
+		__setReadFileForTesting(null);
+		__setReadTimeoutForTesting(null);
 	});
 
 	describe("load()", () => {
@@ -630,6 +643,378 @@ describe("LocalFsStorage", () => {
 			// no duplicates
 			const allLabels = seen.map((s) => s.title);
 			expect(new Set(allLabels).size).toBe(allLabels.length);
+		});
+	});
+
+	// ==========================================================================
+	// S03 new surface — write retry, read timeout, sweep counters, MEM024 fix.
+	// ==========================================================================
+	// R017 (write retry on EAGAIN/EWOULDBLOCK), R005 (5s read timeout for
+	// readSvg), R010 (sweep_runs / sweep_removed counters), and the
+	// MEM024 follow-up that closes the S02 surface gap where list() and
+	// search() dropped the map key.
+
+	describe("write retry (R017)", () => {
+		it("retries writeFile once on EAGAIN, increments storage_write_retries, and persists the entry", async () => {
+			const root = await mkdtemp(join(tmpdir(), "mermaid-test-"));
+			try {
+				const counters = new Counters(root);
+				await counters.load();
+				const storage = new LocalFsStorage(root, { counters });
+				await storage.load();
+
+				// First writeFile call throws EAGAIN; second call delegates to
+				// the real node:fs/promises impl. The retry path should
+				// exercise the 1x retry, surface the success, and bump
+				// storage_write_retries by exactly 1.
+				let writeCalls = 0;
+				__setWriteFileForTesting(async (path, content) => {
+					writeCalls++;
+					if (writeCalls === 1) {
+						const err = new Error("synthetic EAGAIN");
+						err.code = "EAGAIN";
+						throw err;
+					}
+					return await writeFile(path, content, "utf-8");
+				});
+
+				const id = "mEagain1";
+				await storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+
+				// The blob write is the first writeFile call → EAGAIN, then
+				// retry → real write. The save() then writes store.json.tmp
+				// (real writeFile, no EAGAIN) and renames. So the seam was
+				// called at least twice (1 EAGAIN + 1 retry); subsequent
+				// calls (save's tmp write) also count.
+				expect(writeCalls).toBeGreaterThanOrEqual(2);
+				// Counter bumped by exactly 1 — the EAGAIN retried once.
+				expect(counters.snapshot().storage_write_retries).toBe(1);
+				// Entry is persisted and the blob is on disk.
+				expect(storage.has(id)).toBe(true);
+				expect(existsSync(join(root, "blobs", `${id}.svg`))).toBe(true);
+				const onDisk = await readFile(join(root, "blobs", `${id}.svg`), "utf-8");
+				expect(onDisk).toBe("<svg></svg>");
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		});
+
+		it("does NOT retry on ENOSPC; throws StorageWriteError (-32004, retryable: true) immediately", async () => {
+			const root = await mkdtemp(join(tmpdir(), "mermaid-test-"));
+			try {
+				const counters = new Counters(root);
+				await counters.load();
+				const storage = new LocalFsStorage(root, { counters });
+				await storage.load();
+
+				let writeCalls = 0;
+				__setWriteFileForTesting(async () => {
+					writeCalls++;
+					const err = new Error("synthetic ENOSPC");
+					err.code = "ENOSPC";
+					throw err;
+				});
+
+				let caught;
+				try {
+					await storage.put("mEnospc", "graph TD\n  A-->B", "<svg></svg>", 13);
+				} catch (e) {
+					caught = e;
+				}
+				// Tagged failure: StorageWriteError with the locked R020 envelope.
+				expect(caught).toBeInstanceOf(StorageWriteError);
+				expect(caught.code).toBe(-32004);
+				expect(caught.retryable).toBe(true);
+				expect(caught.name).toBe("StorageWriteError");
+				// Terminal errors don't retry → the seam is called exactly once.
+				expect(writeCalls).toBe(1);
+				// And the counter is NOT bumped (no transient retry happened).
+				expect(counters.snapshot().storage_write_retries).toBe(0);
+				// The entry is in memory but never made it to disk.
+				expect(storage.has("mEnospc")).toBe(true);
+				expect(existsSync(join(root, "blobs", "mEnospc.svg"))).toBe(false);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		});
+
+		it("retries on EWOULDBLOCK (sibling of EAGAIN in the transient bucket)", async () => {
+			const root = await mkdtemp(join(tmpdir(), "mermaid-test-"));
+			try {
+				const counters = new Counters(root);
+				await counters.load();
+				const storage = new LocalFsStorage(root, { counters });
+				await storage.load();
+
+				let writeCalls = 0;
+				__setWriteFileForTesting(async (path, content) => {
+					writeCalls++;
+					if (writeCalls === 1) {
+						const err = new Error("synthetic EWOULDBLOCK");
+						err.code = "EWOULDBLOCK";
+						throw err;
+					}
+					return await writeFile(path, content, "utf-8");
+				});
+
+				await storage.put("mEwould", "g", "<svg></svg>", 1);
+				expect(counters.snapshot().storage_write_retries).toBe(1);
+				expect(existsSync(join(root, "blobs", "mEwould.svg"))).toBe(true);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		});
+
+		it("does NOT retry on EACCES (sibling of ENOSPC in the terminal bucket)", async () => {
+			const root = await mkdtemp(join(tmpdir(), "mermaid-test-"));
+			try {
+				const counters = new Counters(root);
+				await counters.load();
+				const storage = new LocalFsStorage(root, { counters });
+				await storage.load();
+
+				let writeCalls = 0;
+				__setWriteFileForTesting(async () => {
+					writeCalls++;
+					const err = new Error("synthetic EACCES");
+					err.code = "EACCES";
+					throw err;
+				});
+
+				let caught;
+				try {
+					await storage.put("mEacces", "g", "<svg></svg>", 1);
+				} catch (e) {
+					caught = e;
+				}
+				expect(caught).toBeInstanceOf(StorageWriteError);
+				expect(caught.code).toBe(-32004);
+				expect(caught.retryable).toBe(true);
+				expect(writeCalls).toBe(1);
+				expect(counters.snapshot().storage_write_retries).toBe(0);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		});
+	});
+
+	describe("read timeout (R005)", () => {
+		it("throws StorageReadError (-32005, retryable: true) when readFile never resolves within the timeout", async () => {
+			ctx = await makeTempStorage();
+			const id = "mReadTimeout";
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+
+			// Replace readFile with a never-resolving promise so the
+			// Promise.race resolves via the timeout branch. 50ms keeps the
+			// test under 1s.
+			__setReadFileForTesting(() => new Promise(() => {}));
+			__setReadTimeoutForTesting(50);
+
+			let caught;
+			try {
+				await ctx.storage.readSvg(id);
+			} catch (e) {
+				caught = e;
+			}
+			expect(caught).toBeInstanceOf(StorageReadError);
+			expect(caught.code).toBe(-32005);
+			expect(caught.retryable).toBe(true);
+			expect(caught.name).toBe("StorageReadError");
+			// Message names the actual timeout (50ms) so operators can see
+			// which budget fired.
+			expect(caught.message).toContain("50");
+			expect(caught.message).toMatch(/svg read timed out after/);
+		});
+
+		it("returns the svg text on the happy path (no timeout fires, the real read wins)", async () => {
+			ctx = await makeTempStorage();
+			const id = "mReadOk";
+			const svg = "<svg>body</svg>";
+			await ctx.storage.put(id, "graph TD\n  A-->B", svg, 13);
+			// Default seams + default 5000ms timeout — read completes well
+			// under that budget.
+			expect(await ctx.storage.readSvg(id)).toBe(svg);
+		});
+
+		it("returns null on a missing blob (preserves v0.1.0 '404 = null' contract)", async () => {
+			ctx = await makeTempStorage();
+			// No put() — the blob file does not exist. readFile throws
+			// ENOENT, which the catch swallows into null (not a timeout).
+			expect(await ctx.storage.readSvg("never-stored")).toBeNull();
+		});
+	});
+
+	describe("sweep counters (R010)", () => {
+		it("increments sweep_runs on every call and sweep_removed when entries are removed", async () => {
+			const root = await mkdtemp(join(tmpdir(), "mermaid-test-"));
+			try {
+				const counters = new Counters(root);
+				await counters.load();
+				const storage = new LocalFsStorage(root, { counters });
+				await storage.load();
+
+				// load() itself calls sweep() at the end, so the counter
+				// has already been bumped once before this test starts.
+				// Capture the baseline so the assertions are not coupled
+				// to the load() side effect.
+				const baselineRuns = counters.snapshot().sweep_runs;
+
+				// 1st sweep: nothing expired → sweep_removed stays 0.
+				const r1 = await storage.sweep();
+				expect(r1).toBe(0);
+				expect(counters.snapshot().sweep_runs).toBe(baselineRuns + 1);
+				expect(counters.snapshot().sweep_removed).toBe(0);
+
+				// 2nd sweep: still nothing expired.
+				const r2 = await storage.sweep();
+				expect(r2).toBe(0);
+				expect(counters.snapshot().sweep_runs).toBe(baselineRuns + 2);
+				expect(counters.snapshot().sweep_removed).toBe(0);
+
+				// Add an expired entry, sweep, and verify sweep_removed
+				// advances by exactly 1.
+				const now = Date.now();
+				storage.store.set("expired1", {
+					code: "g",
+					createdAt: now - TTL_MS - 1000,
+					pinned: false,
+					lastAccessedAt: now,
+					sourceLength: 1,
+				});
+				const r3 = await storage.sweep();
+				expect(r3).toBe(1);
+				expect(counters.snapshot().sweep_removed).toBe(1);
+				expect(storage.has("expired1")).toBe(false);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		});
+
+		it("does NOT increment sweep_removed when nothing is removed (and does not call save())", async () => {
+			const root = await mkdtemp(join(tmpdir(), "mermaid-test-"));
+			try {
+				const counters = new Counters(root);
+				await counters.load();
+				const storage = new LocalFsStorage(root, { counters });
+				await storage.load();
+				// Add a fresh, unexpired entry.
+				await storage.put("mFreshSweep", "g", "<svg></svg>", 1);
+				const removedBefore = counters.snapshot().sweep_removed;
+				const r = await storage.sweep();
+				expect(r).toBe(0);
+				// sweep_removed never advances on a no-op sweep.
+				expect(counters.snapshot().sweep_removed).toBe(removedBefore);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		});
+	});
+
+	describe("MEM024 — list() and search() items carry the id field", () => {
+		it("list() returns items with `id` present and matching the seeded keys", async () => {
+			ctx = await makeTempStorage();
+			const t0 = Date.now();
+			ctx.storage.store.set("alpha", {
+				code: "graph TD\n  A-->B",
+				createdAt: t0 - 2000,
+				pinned: false,
+				lastAccessedAt: t0,
+				sourceLength: 13,
+				title: "alpha-title",
+			});
+			ctx.storage.store.set("beta", {
+				code: "graph TD\n  X-->Y",
+				createdAt: t0 - 1000,
+				pinned: false,
+				lastAccessedAt: t0,
+				sourceLength: 13,
+				title: "beta-title",
+			});
+
+			const res = await ctx.storage.list({ limit: 10 });
+			expect(res.items).toHaveLength(2);
+			// The ids are present and match the seeded keys.
+			const ids = res.items.map((it) => it.id);
+			expect(ids.sort()).toEqual(["alpha", "beta"]);
+			// Every other Entry field is also still present.
+			for (const item of res.items) {
+				expect(typeof item.code).toBe("string");
+				expect(typeof item.createdAt).toBe("number");
+				expect(typeof item.pinned).toBe("boolean");
+				expect(typeof item.lastAccessedAt).toBe("number");
+				expect(typeof item.sourceLength).toBe("number");
+				expect(typeof item.title).toBe("string");
+			}
+		});
+
+		it("list() with a cursor still projects id on the next page", async () => {
+			ctx = await makeTempStorage();
+			const t0 = Date.now();
+			ctx.storage.store.set("a1", { code: "g", createdAt: t0 - 3000, pinned: false, lastAccessedAt: t0, sourceLength: 1 });
+			ctx.storage.store.set("a2", { code: "g", createdAt: t0 - 2000, pinned: false, lastAccessedAt: t0, sourceLength: 1 });
+			ctx.storage.store.set("a3", { code: "g", createdAt: t0 - 1000, pinned: false, lastAccessedAt: t0, sourceLength: 1 });
+
+			const page1 = await ctx.storage.list({ limit: 2 });
+			expect(page1.items).toHaveLength(2);
+			expect(page1.items[0].id).toBe("a3"); // newest
+			expect(page1.items[1].id).toBe("a2");
+			expect(page1.nextCursor).toBeTruthy();
+
+			const page2 = await ctx.storage.list({ limit: 2, cursor: page1.nextCursor });
+			expect(page2.items).toHaveLength(1);
+			expect(page2.items[0].id).toBe("a1");
+		});
+
+		it("search() returns items with `id` present alongside titleMatch and snippet", async () => {
+			ctx = await makeTempStorage();
+			const t0 = Date.now();
+			ctx.storage.store.set("mKw1", {
+				code: "graph TD\n  A-->B",
+				createdAt: t0 - 2000,
+				pinned: false,
+				lastAccessedAt: t0,
+				sourceLength: 1,
+				title: "Auth flow keyword",
+			});
+			ctx.storage.store.set("mKw2", {
+				code: "graph TD\n  keyword in code",
+				createdAt: t0 - 1000,
+				pinned: false,
+				lastAccessedAt: t0,
+				sourceLength: 1,
+				title: "Other",
+			});
+
+			const res = ctx.storage.search("keyword");
+			expect(res.items).toHaveLength(2);
+			// Both items carry id, titleMatch, snippet.
+			for (const item of res.items) {
+				expect(typeof item.id).toBe("string");
+				expect(item.id.length).toBeGreaterThan(0);
+				expect(typeof item.titleMatch).toBe("boolean");
+				expect(typeof item.snippet).toBe("string");
+				expect(item.snippet).toContain("<mark>");
+			}
+			// The ids match the seeded keys.
+			const ids = res.items.map((it) => it.id);
+			expect(ids.sort()).toEqual(["mKw1", "mKw2"]);
+		});
+
+		it("search() with code-only match still surfaces the id on the returned item", async () => {
+			ctx = await makeTempStorage();
+			const t0 = Date.now();
+			ctx.storage.store.set("mCodeOnly", {
+				code: "graph TD\n  keyword in source",
+				createdAt: t0,
+				pinned: false,
+				lastAccessedAt: t0,
+				sourceLength: 1,
+				title: "diagram",
+			});
+			const res = ctx.storage.search("keyword");
+			expect(res.items).toHaveLength(1);
+			expect(res.items[0].id).toBe("mCodeOnly");
+			expect(res.items[0].titleMatch).toBe(false);
 		});
 	});
 });

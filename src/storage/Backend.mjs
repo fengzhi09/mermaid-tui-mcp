@@ -38,15 +38,20 @@
 
 /**
  * @typedef {Object} ListResult
- * @property {Entry[]} items          The page of entries, sorted by createdAt desc, tiebreak id asc.
+ * @property {Array<Entry & {id: string}>} items
+ *   The page of entries, sorted by createdAt desc, tiebreak id asc. S03
+ *   MEM024 fix: each item carries its `id` (the storage map key) so the
+ *   caller can pin / get / delete by reference without a second lookup.
  * @property {string|null} nextCursor Opaque base64 cursor for the next page, or null when the page is the last.
  */
 
 /**
  * @typedef {Object} SearchResult
- * @property {Array<Entry & {titleMatch: boolean, snippet: string}>} items
+ * @property {Array<Entry & {id: string, titleMatch: boolean, snippet: string}>} items
  *   titleMatch=true means the match hit the title; false means it hit the code.
  *   snippet is a 60-char window around the first match with <mark> tags wrapping the hit.
+ *   S03 MEM024 fix: each item carries its `id` (the storage map key) so the
+ *   caller can pin / get / delete by reference.
  * @property {string|null} nextCursor Same shape as ListResult.nextCursor.
  */
 
