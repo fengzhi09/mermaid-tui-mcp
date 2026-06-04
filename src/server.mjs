@@ -33,6 +33,14 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 
 import { render } from "./render.mjs";
 import { Storage, TTL_DAYS } from "./storage.mjs";
+import { renderView, extractSvgBody, escapeHtml, fileUrlFor, httpError, log } from "./helpers.mjs";
+
+export { renderView } from "./helpers.mjs";
+export { extractSvgBody } from "./helpers.mjs";
+export { escapeHtml } from "./helpers.mjs";
+export { fileUrlFor } from "./helpers.mjs";
+export { httpError } from "./helpers.mjs";
+export { log } from "./helpers.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -190,51 +198,15 @@ if (HTTP_ENABLED) {
 // ============================================================================
 // Helpers
 // ============================================================================
-
-export async function renderView(id, entry, svg, withPinButton = false) {
-	const tmpl = await readFile(join(PUBLIC_DIR, "view.html"), "utf-8");
-	return tmpl
-		.replace(/\{\{ID\}\}/g, escapeHtml(id))
-		.replace(/\{\{ID_JSON\}\}/g, JSON.stringify(id))
-		.replace(/\{\{CREATED_AT\}\}/g, new Date(entry.createdAt).toISOString())
-		.replace(/\{\{PINNED\}\}/g, entry.pinned ? "true" : "false")
-		.replace(/\{\{SOURCE_LENGTH\}\}/g, String(entry.sourceLength ?? entry.code.length))
-		.replace(/\{\{SVG_BODY\}\}/g, extractSvgBody(svg))
-		.replace(/\{\{CODE\}\}/g, escapeHtml(entry.code))
-		.replace(/\{\{WITH_PIN\}\}/g, withPinButton ? "true" : "false");
-}
-
-export function extractSvgBody(svg) {
-	const m = svg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/);
-	return m ? m[1] : "";
-}
-
-export function escapeHtml(s) {
-	return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-}
-
-export function fileUrlFor(p) {
-	// Cross-platform file URL. on windows: C:\foo\bar.svg -> file:///C:/foo/bar.svg
-	const abs = p.replace(/\\/g, "/");
-	return `file:///${abs.startsWith("/") ? abs.slice(1) : abs}`;
-}
+//
+// Pure helpers (renderView, extractSvgBody, escapeHtml, fileUrlFor, httpError,
+// log) live in src/helpers.mjs and are imported above so they can be unit-tested
+// in isolation. The only helper that stays here is `json`, which is a thin
+// res.writeHead wrapper used only by the HTTP handler.
 
 function json(res, status, body) {
 	res.writeHead(status, { "Content-Type": "application/json" });
 	res.end(JSON.stringify(body));
-}
-
-export function httpError(status, msg) {
-	const e = new Error(msg);
-	e.status = status;
-	return e;
-}
-
-// All logging MUST go to stderr in stdio MCP mode (stdout is reserved for the
-// JSON-RPC protocol). In HTTP mode stderr is fine too — log file if needed.
-export function log(...args) {
-	const ts = new Date().toISOString().slice(11, 19);
-	console.error(`[${ts}][mermaid-renderer]`, ...args);
 }
 
 log(`v${VERSION} ready | data: ${DATA} | http: ${HTTP_ENABLED ? `${HTTP_HOST}:${HTTP_PORT}` : "off"} | stats:`, storage.stats());

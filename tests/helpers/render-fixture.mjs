@@ -6,9 +6,11 @@ export const VALID_GRAPH = "graph TD\n  A-->B";
 
 export const VALID_GANTT = "gantt\n  title A\n  dateFormat YYYY-MM-DD\n  section S\n  Task :a1, 2026-01-01, 5d";
 
-// Intentionally invalid: the `|...|` label token is attached to a `-->` with
-// no closing `>`, which mermaid 11's parser rejects.
-export const MALFORMED = "graph TD\n  A[Start] -->|wrong syntax here| B";
+// Intentionally invalid: `A-->>B` uses an arrow type that mermaid 11's parser
+// rejects with a clear "Expecting 'AMP', 'COLON'" parse error. (The previous
+// fixture `A -->|label| B` rendered cleanly in mermaid 11, so the test no
+// longer exercised the parse-error path — fixed during T02.)
+export const MALFORMED = "graph TD\n  A-->>B";
 
 /**
  * Build a string of exactly n ASCII chars. The default (200_001) is one
