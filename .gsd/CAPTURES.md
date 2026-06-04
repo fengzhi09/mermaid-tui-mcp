@@ -32,8 +32,10 @@ confirmed, and recorded here. Token values are **never** persisted in this file
   verification. Classifying it as `defer` (not `quick-task`) reflects that it
   is out of scope for S01–S04 and should be re-evaluated at release time.
 - **Affected files:** none in repo; `.gsd/CAPTURES.md` updated only.
-- **Resolved:** 2026-06-04T09:10:00.000Z
+- **Resolved:** 2026-06-04T09:15:00.000Z
 - **Milestone:** M001 (deferred to a future release milestone)
+- **Re-confirmed:** 2026-06-04T09:15:00.000Z — re-validated after retry; no
+  fields changed, classification still `defer`, no action taken by executor.
 
 ---
 

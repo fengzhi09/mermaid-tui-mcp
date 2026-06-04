@@ -42,7 +42,7 @@ What remains before M001 is end-to-end usable: S04 owns the real Claude Code + g
 
 ## Tasks
 
-- [ ] **T01: Build structured stderr JSON logger + persistent counters** `est:60m`
+- [x] **T01: Build structured stderr JSON logger + persistent counters** `est:60m`
   Why: R008 requires structured stderr JSON logging with stable fields (ts, level, event, code, id); R010 requires persistent counters in data/counters.json with tmp+rename atomic writes. Both are pure modules with zero S02 dependencies and form the foundation for T03 (render timeout events), T04 (storage write retry events, sweep counter), and T05 (registerTools wrapper counter increment, /health metrics surface). The current log() in src/helpers.mjs:57 uses console.error with a [HH:MM:SS][mermaid-renderer] text prefix — this task replaces it with structured JSON output and migrates the 7 server.mjs call sites. The current code has no persistence layer for metrics — this task adds src/counters.mjs with 6 counter keys, corruption-tolerant load(), single-flight serialized increment(), and tmp+rename atomic write.
   - Files: `src/logger.mjs`, `src/counters.mjs`, `tests/unit/logger.test.mjs`, `tests/unit/counters.test.mjs`, `src/helpers.mjs`, `src/server.mjs`, `tests/unit/server-helpers.test.mjs`
   - Verify: npm test -- tests/unit/logger.test.mjs tests/unit/counters.test.mjs tests/unit/server-helpers.test.mjs
