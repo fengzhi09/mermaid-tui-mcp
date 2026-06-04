@@ -27,11 +27,45 @@ import { z } from "zod";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { fileUrlFor } from "./helpers.mjs";
+import {
+	RenderTimeoutError,
+	RenderFailedError,
+	JsdomInitError,
+	StorageReadError,
+	PortInUseError,
+	McpProtocolError,
+	classifyDomainError,
+	classifyZodError,
+	ErrorCode,
+} from "./errors.mjs";
+
+// Re-export the S03 error namespace so callers can import everything from
+// src/tools.mjs (the historical single seam) without having to know about
+// src/errors.mjs. The 2 S02 classes (NotFoundError, StorageWriteError) stay
+// defined here; the 6 new S03 classes live in errors.mjs and are re-exported
+// alongside the 2 classifiers + the ErrorCode enum.
+export {
+	RenderTimeoutError,
+	RenderFailedError,
+	JsdomInitError,
+	StorageReadError,
+	PortInUseError,
+	McpProtocolError,
+	classifyDomainError,
+	classifyZodError,
+	ErrorCode,
+};
 
 // ---------------------------------------------------------------------------
 // Tagged error classes — S03 may add more codes; the tagged-error pattern is
 // the seam. The registerTools wrapper checks for `e.code` (a number) on
 // caught errors and maps them to the R020 isError envelope.
+//
+// The 6 NEW S03 codes (RenderTimeout, RenderFailed, JsdomInitFailed,
+// StorageReadFailed, PortInUse, McpProtocolViolation) live in
+// src/errors.mjs — the canonical home for the full -32001..-32009 +
+// -32602 code set, the namespace-disambiguation comment, and the
+// classifyZodError / classifyDomainError / renderError helpers.
 // ---------------------------------------------------------------------------
 
 export class NotFoundError extends Error {
