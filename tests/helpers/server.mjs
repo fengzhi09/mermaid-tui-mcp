@@ -92,19 +92,31 @@ export function spawnServer({ env = {}, args = [] } = {}) {
 			for (const reject of pending.values()) reject(drainErr);
 			pending.clear();
 			child.stdin.end();
-			child.on("exit", (code) => {
+
+			let resolved = false;
+			const done = (code) => {
+				if (resolved) return;
+				resolved = true;
 				resolveClose({
 					stdout: buffer,
 					stderr: stderrChunks.join(""),
 					code,
 				});
-			});
-			// belt-and-suspenders in case exit never fires
+			};
+			child.on("exit", (code) => done(code));
+
+			// Graceful: end stdin + give the server a moment to flush + exit.
+			// The server registers a 1h `setInterval` for the sweep that is
+			// NOT unref'd, so the event loop never goes idle on its own.
+			// Escalate SIGTERM -> SIGKILL to avoid hanging the test on
+			// non-Windows runners where the SIGTERM handler's 3s unref'd
+			// drain timer can't overcome the live setInterval.
 			setTimeout(() => {
-				if (child.exitCode == null && !child.killed) {
-					child.kill();
-				}
-			}, 500).unref();
+				if (child.exitCode == null && !child.killed) child.kill("SIGTERM");
+			}, 150).unref();
+			setTimeout(() => {
+				if (child.exitCode == null && !child.killed) child.kill("SIGKILL");
+			}, 1200).unref();
 		});
 	}
 
