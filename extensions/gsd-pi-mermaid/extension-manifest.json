@@ -1,0 +1,19 @@
+{
+  "id": "mermaid-direct",
+  "name": "Mermaid Direct (bypass mcp_call double-escape)",
+  "version": "0.1.0",
+  "description": "Long-lived child-process JSON-RPC client for mermaid-tui-mcp that bypasses the gsd-pi mcp_call transport's \\n double-escape. Ships 7 tools (mermaid_render/pin/unpin/get/list/search/delete) that talk to the mermaid server over raw stdio so multi-line Mermaid source survives.",
+  "tier": "community",
+  "requires": { "platform": ">=1.0.0" },
+  "provides": {
+    "tools": [
+      "mermaid_render",
+      "mermaid_pin",
+      "mermaid_unpin",
+      "mermaid_get",
+      "mermaid_list",
+      "mermaid_search",
+      "mermaid_delete"
+    ]
+  }
+}

@@ -14,6 +14,13 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { log as loggerLog } from "./logger.mjs";
+// Aliased to `_LocalFsStorage` to avoid clashing with the
+// `import { LocalFsStorage as Storage }` pattern in src/server.mjs.
+// The helper is consumed by both server.mjs (boot path) and
+// bin/migrate-to-oss.mjs (CLI source/target factory) — the alias
+// keeps callers' namespaces independent of helpers' internal naming.
+import { LocalFsStorage as _LocalFsStorage } from "./storage/LocalFsStorage.mjs";
+import { OssStorageFromEnv as _OssStorageFromEnv } from "./storage/OssStorage.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(resolve(__dirname, ".."), "public");
@@ -59,3 +66,64 @@ export function httpError(status, msg) {
 // helpers.mjs. Keeping the named export here preserves the 6
 // single-name ^export invariant in src/server.mjs (MEM015 + S01 audit).
 export const log = loggerLog;
+
+/**
+ * Env-driven factory that returns the right StorageBackend for the
+ * renderer. Pure function of its inputs (no I/O, no `.load()`) so the
+ * migration CLI in bin/migrate-to-oss.mjs and the server's boot path
+ * can share a single source of truth for "given an env, return the
+ * right StorageBackend" — the "wiring cleanup" promised in the S02
+ * title. The two call sites only differ in the env they read and the
+ * failure-mode handler; the construction logic is identical.
+ *
+ * - env is a plain object (typically `process.env`) holding
+ *   MERMAID_RENDERER_* and MERMAID_OSS_* vars.
+ * - opts is `{ dataDir, counters, logger, readTimeoutMs, createBucket }`:
+ *   - dataDir      required for the local backend; defaults to
+ *                  process.env.MERMAID_RENDERER_DATA. The OssStorage
+ *                  backend ignores dataDir (its root is the bucket name).
+ *   - counters     S03 (R010) persistent counters instance — pass-through.
+ *   - logger       {log: Function} (R008) structured logger — pass-through.
+ *   - readTimeoutMs optional oss read budget override (default 5000ms).
+ *   - createBucket optional OssStorage.createBucket flag (default false).
+ *
+ * Returns either LocalFsStorage or OssStorage based on
+ * `env.MERMAID_RENDERER_BACKEND === "oss"`. On missing MERMAID_OSS_*
+ * vars the OssStorageFromEnv factory throws OssEnvInvalidError — we
+ * let it propagate; the caller decides whether to exit(1) (server.mjs)
+ * or emit a human message (the CLI). The factory already emits the
+ * `oss_env_invalid` structured log line before throwing, so the
+ * rejection is observable in the log stream regardless of how the
+ * caller handles the exception.
+ *
+ * @param {Record<string, string | undefined>} env
+ * @param {{
+ *   dataDir?: string,
+ *   counters?: import("./counters.mjs").Counters | null,
+ *   logger?: {log?: Function} | null,
+ *   readTimeoutMs?: number,
+ *   createBucket?: boolean,
+ * }} [opts]
+ * @returns {import("./storage/LocalFsStorage.mjs").LocalFsStorage | import("./storage/OssStorage.mjs").OssStorage}
+ */
+export function buildStorageFromEnv(env, opts = {}) {
+	const backend = env.MERMAID_RENDERER_BACKEND;
+	if (backend === "oss") {
+		// OssStorageFromEnv validates the 5 required MERMAID_OSS_* vars
+		// and throws OssEnvInvalidError with the ordered missing-var list
+		// when any are absent. Pass opts through verbatim so the migration
+		// CLI can wire createBucket / counters / logger the same way the
+		// server's boot path does.
+		return _OssStorageFromEnv(env, opts);
+	}
+	// "local" or unset — default backend. dataDir falls back to the
+	// server's documented env-var name; the CLI passes it explicitly so
+	// the helper does not have to import process.env in tests.
+	const dataDir = opts && typeof opts.dataDir === "string" && opts.dataDir.length > 0
+		? opts.dataDir
+		: (env.MERMAID_RENDERER_DATA || "");
+	return new _LocalFsStorage(dataDir, {
+		counters: opts && opts.counters !== undefined ? opts.counters : null,
+		logger: opts && opts.logger !== undefined ? opts.logger : null,
+	});
+}

@@ -1,6 +1,6 @@
 {
   "name": "mermaid-tui-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local mermaid rendering service for gsd-pi. stdio MCP server (default) for the live command-box flow; HTTP 127.0.0.1:5300 in standalone mode for browser view pages. 7-day TTL with optional pin.",
   "type": "module",
   "private": true,
@@ -17,6 +17,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1062.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "jsdom": "^25.0.0",
     "mermaid": "^11.15.0",

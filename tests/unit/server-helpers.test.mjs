@@ -6,10 +6,25 @@
 // bootstrap (Storage instantiation, `await storage.load()`, stdio MCP
 // connect) and pollute the repo with a `data/` directory — out of scope
 // for a unit test, and that's what the integration tests in T03 cover.
+//
+// S02 T01 adds `buildStorageFromEnv` to the helper surface. It's a pure
+// function of its inputs (no I/O, no `.load()`) so the tests pass a
+// plain object literal as `env` and assert on the returned instance
+// shape without touching the network or disk. The fixture for the
+// LocalFsStorage assertion is the same mkdtemp pattern the storage
+// tests use (so the constructor's `mkdir -p` on the real data dir is
+// exercised by the next .load() call — these tests deliberately do
+// not call .load(), they only assert on construction shape).
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { escapeHtml, extractSvgBody, fileUrlFor, httpError, log, renderView } from "../../src/helpers.mjs";
+import { buildStorageFromEnv, escapeHtml, extractSvgBody, fileUrlFor, httpError, log, renderView } from "../../src/helpers.mjs";
+import { LocalFsStorage } from "../../src/storage/LocalFsStorage.mjs";
+import { OssEnvInvalidError, OssStorage } from "../../src/storage/OssStorage.mjs";
+import { Counters } from "../../src/counters.mjs";
 
 describe("escapeHtml", () => {
 	it("escapes &, <, >, \", and '", () => {
@@ -141,5 +156,126 @@ describe("log", () => {
 		} finally {
 			spy.mockRestore();
 		}
+	});
+});
+
+describe("buildStorageFromEnv (S02 T01)", () => {
+	// S02 T01 contract: buildStorageFromEnv(env, opts) returns the right
+	// StorageBackend for the renderer with no I/O and no .load() — the
+	// caller decides when to .load() the storage (server.mjs after the
+	// try/catch, the migration CLI after constructing both source/target).
+	// These tests assert the construction shape: instance type, .root,
+	// and pass-through of opts.counters / opts.logger / opts.createBucket.
+
+	/** @type {string|null} */
+	let tmpDir = null;
+	// Stub the stderr write to keep test output clean — the
+	// oss_env_invalid failure log line is exercised by the negative case.
+	// After each test, restore the spy and remove the temp dir.
+	afterEach(async () => {
+		if (tmpDir) {
+			await rm(tmpDir, { recursive: true, force: true });
+			tmpDir = null;
+		}
+		vi.restoreAllMocks();
+	});
+
+	it("with no BACKEND returns LocalFsStorage pointed at the given dataDir", async () => {
+		tmpDir = await mkdtemp(join(tmpdir(), "bsfe-local-"));
+		const storage = buildStorageFromEnv({ /* no MERMAID_RENDERER_BACKEND */ }, { dataDir: tmpDir });
+		expect(storage).toBeInstanceOf(LocalFsStorage);
+		expect(storage).not.toBeInstanceOf(OssStorage);
+		expect(storage.root).toBe(tmpDir);
+		// LocalFsStorage's data layout: <root>/store.json, <root>/store.json.tmp, <root>/blobs
+		expect(storage.storePath).toBe(join(tmpDir, "store.json"));
+		expect(storage.tmpPath).toBe(join(tmpDir, "store.json.tmp"));
+		expect(storage.blobsDir).toBe(join(tmpDir, "blobs"));
+	});
+
+	it("with BACKEND=oss + valid env returns OssStorage", () => {
+		const env = {
+			MERMAID_RENDERER_BACKEND: "oss",
+			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
+			MERMAID_OSS_REGION: "us-east-1",
+			MERMAID_OSS_ACCESS_KEY_ID: "AKID_TEST",
+			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
+			MERMAID_OSS_BUCKET: "mermaid-bucket",
+		};
+		const storage = buildStorageFromEnv(env);
+		expect(storage).toBeInstanceOf(OssStorage);
+		expect(storage).not.toBeInstanceOf(LocalFsStorage);
+		// OssStorage's root is the bucket name (Backend.mjs opaque-token contract).
+		expect(storage.root).toBe("mermaid-bucket");
+		expect(storage.bucket).toBe("mermaid-bucket");
+		// An S3Client was constructed and is on the instance.
+		expect(storage.client).toBeTruthy();
+		expect(typeof storage.client.send).toBe("function");
+	});
+
+	it("with BACKEND=oss + missing MERMAID_OSS_BUCKET throws OssEnvInvalidError", () => {
+		const env = {
+			MERMAID_RENDERER_BACKEND: "oss",
+			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
+			MERMAID_OSS_REGION: "us-east-1",
+			MERMAID_OSS_ACCESS_KEY_ID: "AKID_TEST",
+			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
+			// MERMAID_OSS_BUCKET intentionally omitted
+		};
+		// Suppress the structured `oss_env_invalid` log line that the factory
+		// emits before throwing — the test asserts on the throw, not the log
+		// surface (which is the existing oss-env.test.mjs coverage).
+		const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => {});
+		expect(() => buildStorageFromEnv(env)).toThrow(OssEnvInvalidError);
+		try {
+			buildStorageFromEnv(env);
+		} catch (err) {
+			expect(err).toBeInstanceOf(OssEnvInvalidError);
+			expect(err.missing).toEqual(["MERMAID_OSS_BUCKET"]);
+			// Code is the in-process -32006 marker per src/storage/OssStorage.mjs.
+			expect(err.code).toBe(-32006);
+		}
+		// The factory emitted at least one stderr line for the rejection.
+		expect(spy).toHaveBeenCalled();
+	});
+
+	it("respects opts.counters / opts.logger pass-through", async () => {
+		tmpDir = await mkdtemp(join(tmpdir(), "bsfe-counters-"));
+		const counters = new Counters(tmpDir);
+		await counters.load();
+		const logger = { log: vi.fn() };
+		const storage = buildStorageFromEnv({ /* no BACKEND */ }, { dataDir: tmpDir, counters, logger });
+		expect(storage.counters).toBe(counters);
+		expect(storage.logger).toBe(logger);
+
+		// OssStorage variant — same pass-through contract.
+		const env = {
+			MERMAID_RENDERER_BACKEND: "oss",
+			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
+			MERMAID_OSS_REGION: "us-east-1",
+			MERMAID_OSS_ACCESS_KEY_ID: "AKID_TEST",
+			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
+			MERMAID_OSS_BUCKET: "mermaid-bucket",
+		};
+		const ossStorage = buildStorageFromEnv(env, { counters, logger });
+		expect(ossStorage.counters).toBe(counters);
+		expect(ossStorage.logger).toBe(logger);
+	});
+
+	it("with BACKEND=oss + createBucket:true passes it through to OssStorage", () => {
+		const env = {
+			MERMAID_RENDERER_BACKEND: "oss",
+			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
+			MERMAID_OSS_REGION: "us-east-1",
+			MERMAID_OSS_ACCESS_KEY_ID: "AKID_TEST",
+			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
+			MERMAID_OSS_BUCKET: "mermaid-bucket",
+		};
+		const storage = buildStorageFromEnv(env, { createBucket: true });
+		expect(storage).toBeInstanceOf(OssStorage);
+		expect(storage.createBucket).toBe(true);
+
+		// Default (opt absent) → false, mirroring the OssStorageFromEnv default.
+		const storageDefault = buildStorageFromEnv(env);
+		expect(storageDefault.createBucket).toBe(false);
 	});
 });

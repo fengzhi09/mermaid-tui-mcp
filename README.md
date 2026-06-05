@@ -88,6 +88,73 @@ Stops the same way (`bin/stop.sh` / `bin/stop.ps1`).
 
 Without this, the `fileLink` returned by `render_mermaid` still works (it points to a self-contained HTML file under `data/blobs/`). The `httpLink` will be `null`.
 
+### 4. (Optional) Use cloud storage (OssStorage)
+
+By default, diagrams are stored on the local filesystem under `data/`. To route all 7 stdio MCP tools to a S3-compatible object store instead, set `MERMAID_RENDERER_BACKEND=oss` plus the 5 required `MERMAID_OSS_*` env vars (see [Configuration](#configuration) below). The easiest way to try it locally is MinIO in Docker:
+
+```bash
+docker run -d --name minio -p 9000:9000 -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+  quay.io/minio/minio server /data --console-address :9001
+
+export MERMAID_RENDERER_BACKEND=oss
+export MERMAID_OSS_ENDPOINT=http://127.0.0.1:9000
+export MERMAID_OSS_REGION=us-east-1
+export MERMAID_OSS_ACCESS_KEY_ID=minioadmin
+export MERMAID_OSS_SECRET_ACCESS_KEY=minioadmin
+export MERMAID_OSS_BUCKET=mermaid
+```
+
+Browse the bucket at `http://127.0.0.1:9001` (login `minioadmin` / `minioadmin`). The 7 tool handlers are unchanged — the env switch is the only seam. AWS S3 and Aliyun OSS in S3-compat mode work the same way; only `MERMAID_OSS_ENDPOINT` / `MERMAID_OSS_REGION` / `MERMAID_OSS_ACCESS_KEY_ID` / `MERMAID_OSS_SECRET_ACCESS_KEY` differ.
+
+### Migrating from local to cloud
+
+Already have diagrams in a v0.2.0 `data/` dir? Run `node bin/migrate-to-oss.mjs` once to copy them to your configured bucket. The migration is **idempotent** (safe to re-run — a re-run is a no-op when the bucket is already populated), **dry-run-able** (`--dry-run` reports what would be copied without writing), and exits `1` only on missing `MERMAID_OSS_*` env vars (the env-validation error lists the 5 required var names in the stable order). On success the bucket ends up with the **post-sweep state** of the source: an `expired-and-unpinned` entry is dropped by the source's TTL sweep on `load()` before the migration sees the store, so a v0.2.0 source with 5 entries (3 fresh+pinned, 1 expired-but-pinned, 1 expired-and-unpinned) yields 4 entries in the bucket. `createdAt` / `title` / `pinned` are preserved byte-equal; the migration re-stamps `createdAt` to the source's age so the 7-day TTL is identical after migration.
+
+```bash
+# Source = local data dir (default: $MERMAID_RENDERER_DATA, or <repo>/data);
+# target = the S3-compatible bucket configured by MERMAID_OSS_*.
+node bin/migrate-to-oss.mjs
+
+# Or: explicit source dir (overrides MERMAID_RENDERER_DATA for this run).
+node bin/migrate-to-oss.mjs --source-dir /var/lib/mermaid-tui-mcp/data
+
+# Or: dry-run first — emits the same 6 events, writes 0 entries.
+node bin/migrate-to-oss.mjs --dry-run
+```
+
+The CLI emits 6 structured stderr JSON events (`migrate_start`, `migrate_copy` / `migrate_skip` / `migrate_dry_run` per entry, `migrate_read_failed` on per-entry read errors, and the final `migrate_done` event). The final `migrate_done` event carries `{copied, skipped, readFailed, dryRun, source, target}` where `source` / `target` are `storage.stats()` snapshots (`{total, pinned, unpinned}`) — operators can diff them to confirm a re-run is a no-op (`source == target` and `copied == 0` on the second run). Stdout is reserved for the human summary line (`Migration complete: copied=N skipped=M (source {...} → target {...})`), matching the project's stdio-MCP-server convention (R008 — stderr is the structured event stream). Exit codes: `0` success (copy or dry-run), `1` env-missing, `2` malformed argv. See `tests/integration/migrate-to-oss-proofs/migrate-dry-run.txt` for the canonical output shape.
+
+## Configuration
+
+All knobs are environment variables, set in the shell that runs `node src/server.mjs`. None of them are required — the defaults give you a fully-working local install.
+
+### General
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MERMAID_RENDERER_DATA` | `<repo>/data` | Root directory for `store.json`, `blobs/`, `counters.json`. |
+| `MERMAID_RENDERER_HTTP` | unset | Set to `1` to also expose the HTTP routes (`/health`, `/view`, `/raw/svg`, `/pin`). |
+| `MERMAID_RENDERER_HOST` | `127.0.0.1` | Bind address for the HTTP daemon. |
+| `MERMAID_RENDERER_PORT` | `5300` | First port tried; falls back to 5301, 5302 (R016). |
+| `MERMAID_RENDERER_BACKEND` | `local` | `local` = `LocalFsStorage` (default). `oss` = `OssStorage` over S3-compatible object storage. |
+
+### Cloud storage (OssStorage)
+
+Setting `MERMAID_RENDERER_BACKEND=oss` routes all 7 stdio MCP tools to a S3-compatible object store (AWS S3, MinIO, Aliyun OSS in S3-compat mode) via `@aws-sdk/client-s3`. The 7 tool handlers and the `LocalFsStorage` default impl are unchanged — the env switch is the only seam. See M002/S01 + M002/S03 for the cloud integration story.
+
+| Variable | Required | Default | Example |
+|---|---|---|---|
+| `MERMAID_OSS_ENDPOINT` | yes (when `BACKEND=oss`) | — | `http://127.0.0.1:9000` (MinIO), `https://s3.us-east-1.amazonaws.com` (AWS) |
+| `MERMAID_OSS_REGION` | yes (when `BACKEND=oss`) | — | `us-east-1`, `cn-hangzhou` |
+| `MERMAID_OSS_ACCESS_KEY_ID` | yes (when `BACKEND=oss`) | — | `minioadmin` |
+| `MERMAID_OSS_SECRET_ACCESS_KEY` | yes (when `BACKEND=oss`) | — | `minioadmin` |
+| `MERMAID_OSS_BUCKET` | yes (when `BACKEND=oss`) | — | `mermaid` |
+| `MERMAID_OSS_PREFIX` | no | `""` (root) | `team-a/` (share a bucket across instances) |
+| `MERMAID_OSS_FORCE_PATH_STYLE` | no | `true` | `0` / `false` / `no` to opt out (only needed for virtual-hosted–style endpoints) |
+
+On missing/empty required env at boot, the server logs a single-line JSON `oss_init_failed` line to stderr and exits 1 — operators see the rejection at the boot layer, not as a generic crash. The same `StorageWriteError` (`-32004`) / `StorageReadError` (`-32005`) codes the local backend emits flow through the existing observability surface (`/health.last_errors`, `counters.render_errors`).
+
 ## How the LLM uses it
 
 The tool description (delivered to the LLM via MCP) tells the model:

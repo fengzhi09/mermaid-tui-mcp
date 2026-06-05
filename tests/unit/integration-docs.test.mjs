@@ -58,3 +58,48 @@ describe("integration docs v0.2.0 static check", () => {
 		});
 	}
 });
+
+const CLOUD_BACKEND_SWITCH = "MERMAID_RENDERER_BACKEND=oss";
+const CLOUD_REQUIRED_VARS = [
+	"MERMAID_OSS_ENDPOINT",
+	"MERMAID_OSS_REGION",
+	"MERMAID_OSS_BUCKET",
+	"MERMAID_OSS_ACCESS_KEY_ID",
+	"MERMAID_OSS_SECRET_ACCESS_KEY",
+];
+const CLOUD_MIGRATION_KEYWORDS = ["migrate-to-oss", "bin/migrate-to-oss"];
+
+describe("integration docs v0.3.0 cloud storage static check", () => {
+	for (const { path } of FILES) {
+		it(`${path} references the v0.3.0 cloud storage seam (env switch, 5 required OSS vars, migration CLI)`, () => {
+			const abs = join(DOCS_DIR, path);
+			const body = readFileSync(abs, "utf-8");
+			// 1. Must reference the env switch (the only seam that flips the
+			//    LocalFsStorage default to OssStorage)
+			expect(body).toContain(CLOUD_BACKEND_SWITCH);
+			// 2. Must mention at least 3 of the 5 required MERMAID_OSS_* vars
+			//    (proves the cloud section actually carries the env-var table,
+			//    not just a one-line mention)
+			const requiredHits = CLOUD_REQUIRED_VARS.filter((v) =>
+				body.includes(v),
+			);
+			expect(
+				requiredHits.length,
+				`${path} mentions ${requiredHits.length} of 5 required MERMAID_OSS_* vars [${requiredHits.join(", ")}], expected >= 3`,
+			).toBeGreaterThanOrEqual(3);
+			// 3. Must mention the migration CLI (name or path). openclaw.md is
+			//    exempted: the OpenClaw workaround paths do not cover the
+			//    migration CLI, same exemption pattern as the v0.2.0 tool-count
+			//    rule above.
+			if (path !== "openclaw.md") {
+				const migrationHits = CLOUD_MIGRATION_KEYWORDS.filter((k) =>
+					body.includes(k),
+				);
+				expect(
+					migrationHits.length,
+					`${path} mentions none of [${CLOUD_MIGRATION_KEYWORDS.join(", ")}]; expected at least 1 (the migration CLI)`,
+				).toBeGreaterThanOrEqual(1);
+			}
+		});
+	}
+});

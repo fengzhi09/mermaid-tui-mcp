@@ -25,7 +25,7 @@
 - [x] **S03: Observability - logs, health, counters, error contract** `risk:medium` `depends:[S01]`
   > After this: stderr 单行 JSON 日志(字段稳定 ts 与 level 与 event 与 code 与 id);/health 返 counters 与 last_render_ms 与 last_errors(5 条环形)与现有字段;data/counters.json 持久化启动 load increment save(tmp+rename 原子);10s 渲染超时可注入触发;jsdom 初始化 1 次重试可注入触发;写失败 1 次重试可注入触发;错误码 -32001 到 -32009 映射到 counter 齐全
 
-- [ ] **S04: Integration verification - MCP Inspector and 5-client real smoke** `risk:high` `depends:[S02,S03]`
+- [x] **S04: Integration verification - MCP Inspector and 5-client real smoke** `risk:high` `depends:[S02,S03]`
   > After this: MCP Inspector 跑全 7 工具所有契约满足;Claude Code 真启动与真调一次 render_mermaid 拿到 ASCII 与链接;gsd-pi 真启动与真调一次 render_mermaid 拿到 ASCII 与链接;Hermes 与 opencode 与 OpenClaw 集成 doc 字段静态检查;CHANGELOG 写 v0.2.0(列出 7 工具与计数器与测试基线);README 更新(7 工具表与快速开始与故障排查)
 
 ## Boundary Map

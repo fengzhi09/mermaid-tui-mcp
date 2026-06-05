@@ -63,6 +63,36 @@ The `mermaid` server exposes **7 stdio MCP tools** (v0.2.0 surface): `render_mer
 - Workaround 1 (HTTP-standalone) and Workaround 2 (`node src/render.mjs` direct) give you **rendering only**. Pinning, listing, searching, getting metadata, and explicit deletion are not reachable from OpenClaw in v0.2.0.
 - If you need the full 7-tool CRUD lifecycle from inside OpenClaw, you must either wait for native MCP (Workaround 3) or pair OpenClaw with a second MCP-capable agent (Claude Code, gsd-pi, opencode, Hermes) and have that agent run the CRUD tools on OpenClaw's behalf.
 
+## v0.3.0 cloud storage (OssStorage) — not reachable from the OpenClaw workarounds
+
+The `mermaid` server can route all 7 stdio MCP tools to a S3-compatible
+object store (AWS S3, MinIO, Aliyun OSS in S3-compat mode) by setting
+`MERMAID_RENDERER_BACKEND=oss` plus 5 required `MERMAID_OSS_*` env vars
+on the server process. See `README.md` for the full env-var table and
+the 4-of-5 post-sweep `node bin/migrate-to-oss.mjs` migration CLI.
+
+**The OpenClaw workarounds (HTTP-standalone, `node src/render.mjs`
+direct) do not reach the cloud backend.** They render only — no
+storage, no migration, no pin/get/list/search/delete. To use v0.3.0
+cloud storage from inside OpenClaw, you must run the actual
+`node src/server.mjs` process (Workaround 1 plus a paired MCP-capable
+agent that drives the 7 stdio tools), or wait for native MCP support
+(Workaround 3).
+
+| Var | Required | Example |
+|---|---|---|
+| `MERMAID_RENDERER_BACKEND` | yes | `oss` |
+| `MERMAID_OSS_ENDPOINT` | yes | `http://127.0.0.1:9000` (MinIO), `https://s3.us-east-1.amazonaws.com` (AWS) |
+| `MERMAID_OSS_REGION` | yes | `us-east-1`, `cn-hangzhou` |
+| `MERMAID_OSS_ACCESS_KEY_ID` | yes | `<key>` |
+| `MERMAID_OSS_SECRET_ACCESS_KEY` | yes | `<secret>` |
+| `MERMAID_OSS_BUCKET` | yes | `mermaid` |
+| `MERMAID_OSS_PREFIX` | no | `team-a/` |
+| `MERMAID_OSS_FORCE_PATH_STYLE` | no | `true` (default) |
+
+On missing/empty required env, the server logs `oss_init_failed` to
+stderr and exits 1.
+
 ## Recommendation
 
 If you have a choice of agent and want the polished experience, use gsd-pi, Claude Code, opencode, or Hermes — all of which have working MCP client support today. OpenClaw is best reserved for tasks that don't need MCP yet.

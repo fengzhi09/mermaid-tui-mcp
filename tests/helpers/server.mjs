@@ -103,6 +103,17 @@ export function spawnServer({ env = {}, args = [] } = {}) {
 					code,
 				});
 			};
+			// The server may have already exited by the time close() runs —
+			// e.g. a boot-time process.exit(1) on invalid env (M002/S01/T03),
+			// or any fast-fail path. The 'exit' event fires once at process
+			// death; listeners added after the fact are never invoked. Check
+			// child.exitCode / child.signalCode up front so the test harness
+			// sees the real termination code (not a SIGKILL fallback from the
+			// timer below). When the child is still alive, fall through to
+			// the 'exit' listener + signal escalation.
+			if (child.exitCode != null || child.signalCode != null) {
+				return done(child.exitCode);
+			}
 			child.on("exit", (code) => done(code));
 
 			// Graceful: end stdin + give the server a moment to flush + exit.

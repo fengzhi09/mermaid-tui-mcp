@@ -68,6 +68,25 @@ data/
 - **Pin flag** survives the sweep. Cleared via `POST /pin?id=<id>&pin=false`.
 - **`lastAccessedAt`** is updated on every `get()` / `pruneIfExpired()`. It is currently informational only — used to show "last viewed" in the viewer's `created` line.
 
+## Storage backends
+
+The 7 tool handlers never touch the filesystem or the network directly. They go through a `StorageBackend` interface (JSDoc typedefs in `src/storage/Backend.mjs`):
+
+```
+load() / save() / sweep() / put(id, code, svg, title) / getMetadata(id)
+readSvg(id) / setPinned(id, bool) / remove(id) / list() / search(q)
+stats() / pruneIfExpired() / root
+```
+
+`src/server.mjs` picks an implementation at boot from `MERMAID_RENDERER_BACKEND`:
+
+| `BACKEND` | Impl | Source | Default? |
+|---|---|---|---|
+| `local` (default, unset) | `LocalFsStorage` | `src/storage/LocalFsStorage.mjs` | yes — 7-day TTL, JSON index, self-contained viewer in `data/blobs/` |
+| `oss` | `OssStorage` | `src/storage/OssStorage.mjs` | opt-in — S3-compatible object store via `@aws-sdk/client-s3`; covers AWS S3, MinIO, Aliyun OSS in S3-compat mode |
+
+The `oss` branch is a real factory (`OssStorageFromEnv(process.env, { counters, logger })`); missing/empty required env at boot causes `process.exit(1)` after a single-line JSON `oss_init_failed` stderr log. The same `StorageWriteError` (`-32004`) / `StorageReadError` (`-32005`) codes the local backend emits flow through the existing `/health.last_errors` + `counters.render_errors` observability surface, so the on-the-wire contract is identical regardless of backend — the env switch is the only seam.
+
 ## Why view.html is generated per-render, not a static template
 
 Each `<id>.html` has the diagram's SVG inlined. That means the file is self-contained: open it with `file://` in any browser and the diagram renders immediately, even with no network and no running server. The `fileLink` returned by `render_mermaid` is the path to this file.

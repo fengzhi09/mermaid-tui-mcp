@@ -31,8 +31,8 @@ import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import { render } from "./render.mjs";
-import { LocalFsStorage as Storage, TTL_DAYS } from "./storage/LocalFsStorage.mjs";
-import { renderView, extractSvgBody, escapeHtml, fileUrlFor, httpError, log } from "./helpers.mjs";
+import { TTL_DAYS } from "./storage/LocalFsStorage.mjs";
+import { buildStorageFromEnv, renderView, extractSvgBody, escapeHtml, fileUrlFor, httpError, log } from "./helpers.mjs";
 import { registerTools } from "./tools.mjs";
 import { Counters } from "./counters.mjs";
 import { tryListen } from "./port-fallback.mjs";
@@ -49,7 +49,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const DATA = process.env.MERMAID_RENDERER_DATA || join(ROOT, "data");
 const PUBLIC_DIR = join(ROOT, "public");
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const startedAt = Date.now();
 
 const HTTP_ENABLED = process.env.MERMAID_RENDERER_HTTP === "1";
@@ -57,27 +57,39 @@ const HTTP_PORT = Number.parseInt(process.env.MERMAID_RENDERER_PORT || "5300", 1
 const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 
 // StorageBackend factory — the env switch exists (MEM002) so M002's OssStorage
-// can plug in without re-plumbing server.mjs. Today only "local" (default) and
-// "oss" (stub) are recognised; "oss" logs a stderr line and falls through to
-// LocalFsStorage — the actual OSS impl lands in M002.
-const BACKEND = process.env.MERMAID_RENDERER_BACKEND;
+// can plug in without re-plumbing server.mjs. "local" (default) uses the
+// on-disk LocalFsStorage; "oss" builds a S3-compatible OssStorage from the
+// MERMAID_OSS_* env vars (T03). On missing/empty required vars the factory
+// throws OssEnvInvalidError; we catch it, emit an `oss_init_failed` log line,
+// and exit(1) so the operator sees a clear boot failure (not a silent
+// 2-second hang followed by a confusing stdio timeout).
+// S02 (T01) collapsed the 15-line if/else into a single buildStorageFromEnv
+// call. The helper in src/helpers.mjs is the same factory the migration CLI
+// (bin/migrate-to-oss.mjs) uses — one source of truth for "given an env,
+// return the right StorageBackend".
 
 // S03 (R010): persistent monotonic counters — the 6-key set the /health
 // surface reads, persisted to <root>/counters.json via tmp+rename. Loaded
 // synchronously here so the first tool call after boot sees the persisted
-// state. The Counters instance is passed to LocalFsStorage so sweep +
-// write-retry paths can increment, and to registerTools via ctx so the
-// wrapper can bump render_total / render_errors / ascii_failures.
+// state. The Counters instance is passed to buildStorageFromEnv so the
+// constructed storage can increment on sweep / write-retry paths, and to
+// registerTools via ctx so the wrapper can bump render_total /
+// render_errors / ascii_failures.
 const counters = new Counters(DATA);
 await counters.load();
 
 let storage;
-if (BACKEND === "oss") {
-	log({ level: "warn", event: "backend_stub", backend: "oss" });
-	storage = new Storage(DATA, { counters, logger: log });
-} else {
-	// "local" or unset — default
-	storage = new Storage(DATA, { counters, logger: log });
+try {
+	storage = buildStorageFromEnv(process.env, { dataDir: DATA, counters, logger: log });
+} catch (err) {
+	// Missing or empty required MERMAID_OSS_* env var(s). The factory
+	// has already emitted the structured `oss_env_invalid` log line;
+	// we add an `oss_init_failed` line at the same level so the boot
+	// path is observable end-to-end, then exit(1) so the operator
+	// sees a clear failure (not a 2-second hang followed by a
+	// confusing stdio timeout from the parent MCP launcher).
+	log({ level: "error", event: "oss_init_failed", error: String(err?.message || err) });
+	process.exit(1);
 }
 await storage.load();
 
@@ -239,7 +251,12 @@ function json(res, status, body) {
 	res.end(JSON.stringify(body));
 }
 
-log({ event: "boot", version: VERSION, data: DATA, http: HTTP_ENABLED, stats: storage.stats() });
+// storage.root is the StorageBackend's opaque data-location token: for
+// LocalFsStorage it's the data directory (= DATA), for OssStorage it's the
+// bucket name. Using storage.root keeps the boot record backend-agnostic
+// while making it obvious at a glance which backend is active (a /bucket
+// name vs a local /data path).
+log({ event: "boot", version: VERSION, data: storage.root, http: HTTP_ENABLED, stats: storage.stats() });
 
 // Graceful shutdown — let in-flight renders finish, then exit. The
 // setTimeout is unref'd so it doesn't hold the loop open if stdio
