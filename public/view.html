@@ -1,36 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{TITLE}} · Mermaid {{ID}}</title>
-  <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f9fafb; color: #111827; }
-    .topbar { position: sticky; top: 0; z-index: 10; background: #1f2937; color: #f9fafb; padding: 10px 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .topbar h1 { margin: 0; font-size: 13px; font-weight: 500; }
-    .topbar .id { font-family: ui-monospace, SFMono-Regular, "SF Mono", monospace; background: #111827; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-    .topbar .meta { color: #9ca3af; font-size: 12px; }
-    .topbar button { background: #374151; color: #f9fafb; border: 0; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.15s; }
-    .topbar button:hover { background: #4b5563; }
-    .topbar button.active { background: #f59e0b; color: #1f2937; }
-    .topbar .spacer { flex: 1; }
-    .stage-wrap { padding: 24px; }
-    .stage { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; overflow: hidden; min-height: 240px; display: flex; justify-content: center; align-items: center; user-select: none; }
-    .stage.pannable { cursor: grab; }
-    .stage.pannable:active { cursor: grabbing; }
-    #mermaid-svg { max-width: 100%; height: auto; transform-origin: center; transition: transform 0.08s ease-out; }
-    .zoom-controls { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
-    .zoom-controls button { width: 44px; height: 44px; border-radius: 50%; background: #1f2937; color: #f9fafb; border: 0; cursor: pointer; font-size: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .zoom-controls button:hover { background: #374151; }
-    .meta-line { padding: 4px 24px 16px; color: #6b7280; font-size: 12px; }
-    .code-block { background: #1f2937; color: #d1d5db; border-radius: 8px; padding: 16px 20px; margin: 0 24px 32px; font-family: ui-monospace, SFMono-Regular, "SF Mono", monospace; font-size: 12px; white-space: pre; overflow: auto; line-height: 1.5; }
-    .pin-badge { color: #f59e0b; }
-    .empty-msg { color: #6b7280; font-style: italic; }
-    .diagram-title { font-size: 14px; font-weight: 500; color: #f9fafb; margin: 0; }
-    .diagram-title:empty { display: none; }
-  </style>
+  <link rel="stylesheet" href="/themes/main.css">
 </head>
 <body>
   <div class="topbar">
@@ -40,6 +14,12 @@
     <span class="meta">{{SOURCE_LENGTH}} chars</span>
     <span id="pin-badge"></span>
     <span class="spacer"></span>
+    <div class="theme-switcher" id="theme-switcher">
+      <button class="theme-btn" data-theme="light" title="Light" data-active="true">☀</button>
+      <button class="theme-btn" data-theme="dark" title="Dark">🌙</button>
+      <button class="theme-btn" data-theme="warm" title="Warm">☕</button>
+      <button class="theme-btn" data-theme="care" title="Care">🌿</button>
+    </div>
     <button id="pin-btn" data-show-when="with-pin">pin</button>
     <button id="zoom-out">−</button>
     <button id="zoom-reset">⊕</button>
@@ -184,6 +164,26 @@
     if (params.get('as') === 'png') {
       setTimeout(() => document.getElementById('download-png').click(), 200);
     }
+
+    // ---- theme switcher (M003 S02 T04) ----
+    // Inline at end of body, so DOM is parsed; safe to query .theme-btn.
+    // Persists the chosen theme in localStorage so the choice survives F5.
+    // Defensive try/catch around localStorage so private-mode browsers
+    // (Safari ITP, file:// with cookies disabled) don't break the switch.
+    const THEME_KEY = 'mermaid-viewer-theme';
+    const root = document.documentElement;
+    function applyTheme(name) {
+      if (!['light','dark','warm','care'].includes(name)) name = 'light';
+      root.setAttribute('data-theme', name);
+      document.querySelectorAll('.theme-btn').forEach(b =>
+        b.toggleAttribute('data-active', b.dataset.theme === name));
+      try { localStorage.setItem(THEME_KEY, name); } catch {}
+    }
+    let saved = 'light';
+    try { saved = localStorage.getItem(THEME_KEY) || 'light'; } catch {}
+    applyTheme(saved);
+    document.querySelectorAll('.theme-btn').forEach(b =>
+      b.addEventListener('click', () => applyTheme(b.dataset.theme)));
   </script>
 </body>
 </html>

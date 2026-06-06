@@ -1,0 +1,24 @@
+/*
+ * Theme: dark
+ * Source: GitHub Primer (dark) — https://primer.style
+ * Design intent: Low-glare night surface with elevated dark gray cards.
+ *                Pure-black bg (#0d1117) gives OLED-friendly contrast, with
+ *                brighter blue (#58a6ff) for primary actions that stays
+ *                legible against the deep canvas. Code blocks share the
+ *                page-bg family for visual cohesion.
+ * Contrast (computed by .gsd/exec/verify-theme-contrast.mjs):
+ *   text/bg=12.26, text-muted/bg=6.15, code-text/code-bg=11.21 — all pass WCAG AA
+ */
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-2: #21262d;
+  --text: #c9d1d9;
+  --text-muted: #8b949e;
+  --primary: #58a6ff;
+  --accent: #d29922;
+  --border: #30363d;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --code-bg: #161b22;
+  --code-text: #c9d1d9;
+}
