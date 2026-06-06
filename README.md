@@ -153,7 +153,7 @@ Setting `MERMAID_RENDERER_BACKEND=oss` routes all 7 stdio MCP tools to a S3-comp
 | `MERMAID_OSS_PREFIX` | no | `""` (root) | `team-a/` (share a bucket across instances) |
 | `MERMAID_OSS_FORCE_PATH_STYLE` | no | `true` | `0` / `false` / `no` to opt out (only needed for virtual-hosted–style endpoints) |
 
-On missing/empty required env at boot, the server logs a single-line JSON `oss_init_failed` line to stderr and exits 1 — operators see the rejection at the boot layer, not as a generic crash. The same `StorageWriteError` (`-32004`) / `StorageReadError` (`-32005`) codes the local backend emits flow through the existing observability surface (`/health.last_errors`, `counters.render_errors`).
+On missing/empty required env at boot, the server **does not exit**. It logs a single-line JSON `oss_init_degraded` (level=warn, with the missing-var list and `code: -32006`), bumps the persistent `oss_init_degraded_count` counter in `data/counters.json`, falls back to a `LocalFsStorage` on the local filesystem, and continues serving all 7 stdio MCP tools. This is the D017 (optional integration failure must not block the main flow) contract — OSS is opt-in, not on the critical path. The runtime also wraps `OssStorage` in a `DegradableStorage` circuit-breaker: if 3 consecutive runtime calls fail (default `MERMAID_DEGRADE_THRESHOLD=3`, cool-down `MERMAID_DEGRADE_HALF_OPEN_AFTER_MS=60000`), the wrapper trips the breaker to `open`, emits `breaker_open` (warn) + bumps `breaker_trips_count`, and routes all subsequent calls to the local fallback for the cool-down window. On a successful half-open probe past the window, `breaker_close` (info) is logged. `/health` exposes `backend` (`local` | `oss` | `degraded`), `last_oss_failure` ({ts, code, msg} | null), `boot_degraded` (boolean), the breaker sub-state (`storage: {degraded, breaker_state, consecutive_failures, …}`), and the two new counters. The same `StorageWriteError` (`-32004`) / `StorageReadError` (`-32005`) codes the local backend emits flow through the existing observability surface (`/health.last_errors`, `counters.render_errors`). Non-`OssEnvInvalidError` initialization failures (real disk errors, factory crashes) still call `process.exit(1)` — they are fatal, not optional. See [docs/architecture.md](docs/architecture.md#optional-integration-degradation) for the full architecture.
 
 ## How the LLM uses it
 
@@ -223,6 +223,18 @@ Errors come back with a stable JSON envelope: `{code, message, retryable, elapse
 
 For the full wire contract, see `docs/mcp-protocol.md`. For runtime health (counters, last 5 errors, last render ms), curl `GET /health` on the HTTP daemon.
 
+## Optional integration failure modes
+
+OSS (cloud storage) and the optional HTTP daemon are both **D017-class** integrations: they add capability but are not on the critical path of the 7 stdio MCP tools. An integration failure (boot misconfiguration, runtime error, or environment conflict) must never block the main flow — stdio MCP stays up regardless. The project materialises that contract through three independent degradation paths:
+
+| # | Path | Trigger | What the operator sees |
+|---|---|---|---|
+| 1 | **Boot env missing** | `BACKEND=oss` + ≥1 of the 5 `MERMAID_OSS_*` vars empty/absent | stderr `oss_init_degraded` (warn, code `-32006`) + `data/counters.json: oss_init_degraded_count` + `/health: backend="degraded"`, `boot_degraded=true`, `last_oss_failure={ts, code, msg}`. All 7 tools work via local fallback. |
+| 2 | **HTTP port taken** | `MERMAID_RENDERER_HTTP=1` + 5300/5301/5302 all in use | stderr `http_listen_failed_fallback` (warn). stdio MCP tools stay up; HTTP routes (`/view`, `/pin`, `/raw/svg`, `/health`) are not bound. |
+| 3 | **Runtime OSS failure** | A tool call hits `OssStorage` and throws (timeout, 5xx, ENOTFOUND) | After 3 consecutive failures (configurable via `MERMAID_DEGRADE_THRESHOLD`), stderr `breaker_open` (warn) + `data/counters.json: breaker_trips_count` + `/health: backend="degraded"`, `storage: {degraded: true, breaker_state: "open", …}`. All subsequent calls route to local for the 60s cool-down (configurable via `MERMAID_DEGRADE_HALF_OPEN_AFTER_MS`). On the next successful probe, stderr `breaker_close` (info). |
+
+These signals are the canonical observability surface — no manual file inspection needed. See [docs/architecture.md](docs/architecture.md#optional-integration-degradation) for the full architecture, the `DegradableStorage` wrapper's `_tryAsync` driver, and the rationale for using a circuit-breaker instead of naive `try/catch` per request.
+
 ## Limits
 
 - Mermaid source up to 200 KB per call.
@@ -256,7 +268,7 @@ The harness is split into three layers, each in its own folder under `tests/`:
 
 Shared fixtures live in `tests/helpers/` (`storage-fixture.mjs`, `render-fixture.mjs`, `server.mjs`) and are imported by the integration and eval tests.
 
-**Baseline:** 23 test files, 175/175 tests passing, ~30 s on a single thread.
+**Baseline (v0.3.0, M003/S03):** 31 test files (5 OSS-endpoint tests skip when `MERMAID_OSS_ENDPOINT` is unset), 286/286 tests passing + 36 skipped, ~12 s on a single thread.
 
 ## License
 
