@@ -454,8 +454,22 @@ export class OssStorage {
 		const message = err && typeof err === "object" && typeof err.message === "string"
 			? err.message
 			: String(err);
+		// T04 /health extension: extract a stable code for the failure
+		// record so the /health handler can surface a useful
+		// `last_oss_failure.code` value. Tagged errors (StorageWriteError
+		// -32004, StorageReadError -32005, OssEnvInvalidError -32006)
+		// expose a numeric .code; raw S3 errors expose a string .name
+		// (e.g. "NoSuchBucket", "TimeoutError") which is more useful
+		// for log correlation than the verbose .message. When neither
+		// is present, code falls back to null (the /health field
+		// permits null per the T04 contract).
+		const code = err && typeof err === "object"
+			? (typeof err.code === "number" ? err.code
+				: typeof err.name === "string" ? err.name
+				: null)
+			: null;
 		this.breaker.failureCount += 1;
-		this.breaker.lastFailure = { message, at: Date.now() };
+		this.breaker.lastFailure = { message, at: Date.now(), code };
 		const reachedThreshold = this.breaker.failureCount >= this.breaker.threshold;
 		if (reachedThreshold) {
 			const wasClosed = this.breaker.state === "closed";

@@ -37,7 +37,7 @@ import { buildStorageFromEnv, renderView, extractSvgBody, escapeHtml, fileUrlFor
 import { registerTools } from "./tools.mjs";
 import { Counters } from "./counters.mjs";
 import { tryListen } from "./port-fallback.mjs";
-import { recordError, setLastRenderMs, snapshot as healthSnapshot } from "./health-state.mjs";
+import { recordError, setLastRenderMs, snapshot as healthSnapshot, setBootDegraded, setBootOssFailure } from "./health-state.mjs";
 import { LocalFsStorage } from "./storage/LocalFsStorage.mjs";
 
 export { renderView } from "./helpers.mjs";
@@ -116,6 +116,16 @@ try {
 		if (counters) {
 			await counters.increment("oss_init_degraded_count");
 		}
+		// T04 /health extension: record the boot as degraded (so the
+		// /health handler can return `backend: "degraded"` even though
+		// the runtime storage is now a pure LocalFsStorage with no
+		// .health() method to introspect), and record the OSS failure
+		// shape so the top-level `last_oss_failure` field carries the
+		// same info the /health consumer expects. Both calls are
+		// module-level in-memory writes (no I/O), safe in the
+		// boot-time async flow.
+		setBootDegraded(true);
+		setBootOssFailure({ ts: Date.now(), code: -32006, msg: errorText });
 		storage = new LocalFsStorage(DATA, { counters, logger: log });
 	} else {
 		// 非 OssEnvInvalidError = 真正致命的初始化错 (如: 本地 fs 不可写,
@@ -278,8 +288,58 @@ if (httpEnabled) {
 				// The full response is now:
 				//   {status, version, uptimeSec, ttlDays, total, pinned, unpinned,
 				//    counters, last_render_ms, last_errors,
+				//    backend, last_oss_failure,
 				//    storage: { degraded, degraded_reason, consecutive_failures, ... }}
 				const storageHealth = typeof storage.health === "function" ? storage.health() : null;
+				// T04 /health extension — compute the top-level `backend`
+				// and `last_oss_failure` fields. Both follow D017 (OSS is
+				// optional, status surfaces degraded) and rely on the
+				// health-state for boot-degraded tracking because the
+				// boot path falls back to a pure LocalFsStorage (no
+				// .health() to introspect).
+				//
+				// backend resolution priority:
+				//   1. boot-degraded (OssEnvInvalidError at boot)  → "degraded"
+				//      (this is the most important signal — the operator
+				//      expected OSS, got a quiet local fallback)
+				//   2. DegradableStorage with breaker open          → "degraded"
+				//   3. DegradableStorage with breaker closed        → "oss"
+				//   4. plain OssStorage                             → "oss"
+				//   5. plain LocalFsStorage (no OSS configured)     → "local"
+				//
+				// last_oss_failure resolution priority (the /health
+				// consumer wants the FIRST observed OSS failure, which
+				// during a degraded boot is the env-missing one):
+				//   1. boot-time record (set by setBootOssFailure)   → that
+				//   2. DegradableStorage.breaker.lastFailure         → mapped {ts: at, code, msg: message}
+				//   3. plain OssStorage.breaker.lastFailure          → mapped same way
+				//   4. no failure observed yet                       → null
+				const hs = healthSnapshot();
+				let backend;
+				if (hs.boot_degraded) {
+					backend = "degraded";
+				} else if (storageHealth) {
+					backend = storageHealth.degraded ? "degraded" : "oss";
+				} else {
+					// No DegradableStorage wrapper — we still need to
+					// distinguish pure OssStorage ("oss") from pure
+					// LocalFsStorage ("local"). The bucket name is the
+					// only signal we have; the LocalFsStorage.root is a
+					// filesystem path, OssStorage.root is the bucket
+					// string. We duck-type: a root containing "/" or a
+					// drive letter is a filesystem path; otherwise it's
+					// a bucket name.
+					const root = storage.root || "";
+					backend = root && !/[\\/]/.test(root) ? "oss" : "local";
+				}
+				let lastOssFailure = hs.last_oss_failure;
+				if (!lastOssFailure && storageHealth && storageHealth.last_failure) {
+					const lf = storageHealth.last_failure;
+					lastOssFailure = { ts: lf.at, code: lf.code ?? null, msg: lf.message };
+				} else if (!lastOssFailure && typeof storage.breaker === "object" && storage.breaker && storage.breaker.lastFailure) {
+					const lf = storage.breaker.lastFailure;
+					lastOssFailure = { ts: lf.at, code: lf.code ?? null, msg: lf.message };
+				}
 				return json(res, 200, {
 					status: "ok",
 					version: VERSION,
@@ -288,6 +348,8 @@ if (httpEnabled) {
 					...storage.stats(),
 					counters: counters.snapshot(),
 					...healthSnapshot(),
+					backend,
+					last_oss_failure: lastOssFailure,
 					...(storageHealth ? { storage: storageHealth } : {}),
 				});
 			}

@@ -50,7 +50,7 @@
  * @typedef {{
  *   state: "closed" | "open",
  *   failureCount: number,
- *   lastFailure: { message: string, at: number } | null,
+ *   lastFailure: { message: string, at: number, code: number | string | null } | null,
  *   openedAt: number | null,
  *   threshold: number,
  *   halfOpenAfterMs: number,
@@ -139,7 +139,7 @@ export class DegradableStorage {
 	 *   failure_threshold: number,
 	 *   half_open_after_ms: number,
 	 *   opened_at: number | null,
-	 *   last_failure: { message: string, at: number } | null,
+	 *   last_failure: { message: string, at: number, code: number | string | null } | null,
 	 *   primary_root: string,
 	 *   fallback_root: string,
 	 * }}

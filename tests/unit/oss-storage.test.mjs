@@ -1026,6 +1026,42 @@ describe("OssStorage — T02 full StorageBackend", () => {
 			expect(ctx.storage.breaker.lastFailure.message).toBe("e3");
 		});
 
+		// T04 /health extension: recordFailure extracts a stable `code`
+		// from the err so the /health.last_oss_failure field can show
+		// a meaningful code (tagged errors expose a numeric .code, raw
+		// S3 errors expose a string .name). Locks the contract for
+		// server.mjs's /health handler — the field is mapped to
+		// {ts, code, msg} there.
+		it("recordFailure extracts code: numeric .code wins (tagged errors), else .name (raw S3 errors), else null", () => {
+			ctx = makeStorage();
+
+			// 1) numeric .code → that code
+			ctx.storage.recordFailure(Object.assign(new Error("write failed"), { code: -32004 }));
+			expect(ctx.storage.breaker.lastFailure.code).toBe(-32004);
+			expect(ctx.storage.breaker.lastFailure.message).toBe("write failed");
+
+			// 2) string .name on a plain Error → that name (S3 error pattern)
+			ctx.storage.recordFailure(Object.assign(new Error("bucket not found"), { name: "NoSuchBucket" }));
+			expect(ctx.storage.breaker.lastFailure.code).toBe("NoSuchBucket");
+			expect(ctx.storage.breaker.lastFailure.message).toBe("bucket not found");
+
+			// 3) non-object err (string) → null
+			ctx.storage.recordFailure("oops");
+			expect(ctx.storage.breaker.lastFailure.code).toBeNull();
+			expect(ctx.storage.breaker.lastFailure.message).toBe("oops");
+
+			// 4) null err → null
+			ctx.storage.recordFailure(null);
+			expect(ctx.storage.breaker.lastFailure.code).toBeNull();
+			expect(ctx.storage.breaker.lastFailure.message).toBe("null");
+
+			// Note: a plain new Error("anonymous") has .name === "Error"
+			// (the class name), so the code field falls back to "Error"
+			// — that's a sensible behavior (a real S3 / network error
+			// has a useful .name like "NoSuchBucket" or "TimeoutError",
+			// but even a bare Error() is not worse than a raw null).
+		});
+
 		it("canAttempt: closed → true; open + past halfOpenAfterMs → true; open + within window → false", () => {
 			ctx = makeStorage();
 			// Closed: always true.
