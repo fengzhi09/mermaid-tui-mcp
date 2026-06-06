@@ -1,6 +1,21 @@
 {
   "nodes": [
     {
+      "id": "milestone:M003",
+      "label": "M003: 主题系统 + 优雅降级 (Optional 集成失败不阻塞主流程) + 云存储降级完整化",
+      "type": "milestone",
+      "description": "Active milestone: M003",
+      "confidence": "EXTRACTED",
+      "sourceFile": "STATE.md"
+    },
+    {
+      "id": "concept:phase:validating-milestone",
+      "label": "Phase: validating-milestone",
+      "type": "concept",
+      "confidence": "EXTRACTED",
+      "sourceFile": "STATE.md"
+    },
+    {
       "id": "pattern:P001",
       "label": "P001",
       "type": "pattern",
@@ -203,6 +218,148 @@
       "label": "M002/S03",
       "type": "slice",
       "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M003:S01",
+      "label": "S01: Boot + runtime 降级验证 (基于 S03 修复后路径)",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M003:S01:T01",
+      "label": "T01: 集成测试: HTTP 端口被占降级 stdio-only (D017 既有路径验证)",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S01:T02",
+      "label": "T02: 集成测试: OSS env 缺失 boot 降级 (S03 修复后验证)",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S01:T03",
+      "label": "T03: 集成测试: runtime OSS 失败熔断 (S03 修复后验证)",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S01:T04",
+      "label": "T04: 端到端 smoke + README/architecture 文档 + 全量回归",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M003:S02",
+      "label": "S02: 主题系统 (4 款预置主题 + CSS variables + 切换)",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M003:S02:T01",
+      "label": "T01: 设计 4 款主题色板 (CSS variables)",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S02:T02",
+      "label": "T02: 重构 view.html: 内联 style → main.css + 4 主题切换按钮",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S02:T03",
+      "label": "T03: render.mjs: 用 CSS variables 注入 beautiful-mermaid 让 SVG 内部颜色跟随主题",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S02:T04",
+      "label": "T04: 主题切换 JS + localStorage 持久化 + integration test + 浏览器证据截图",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M003:S03",
+      "label": "S03: 云存储降级路径完整化 (补 M002 疏漏: boot 降级 + runtime 熔断)",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M003:S03:T01",
+      "label": "T01: 修 server.mjs boot 路径: OssEnvInvalidError → 降级 local + log warn (代替 exit(1))",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S03:T02",
+      "label": "T02: 改 OssStorage 加 circuit-breaker state (失败计数 + 阈值 + 时间窗)",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S03:T03",
+      "label": "T03: 装 DegradableStorage wrapper, 在 OssStorage 外层实现 N 次失败 → 切回 local",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S03:T04",
+      "label": "T04: /health 增 backend 字段 + last_oss_failure + counters 增 oss_init_degraded_count + breaker_trips_count",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S03:T05",
+      "label": "T05: 单元 + 集成测试 + docs/architecture.md 文档 + 全量回归",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M004",
+      "label": "M004",
+      "type": "milestone",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M004:S01",
+      "label": "S01: 用 beautiful-mermaid 替换 mermaid-ascii + jsdom + mermaid 三件套",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M004/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M004:S01:T01",
+      "label": "T01: 装 beautiful-mermaid, 跑 .gsd/scratch 验证 API",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S01:T02",
+      "label": "T02: 重写 src/render.mjs 用 beautiful-mermaid 同步 API,删 jsdom/mermaid-ascii/mermaid 全部 import",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S01:T03",
+      "label": "T03: 更新 tests/unit/render.test.mjs",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S01:T04",
+      "label": "T04: package.json 依赖清理, 移除 mermaid / jsdom / mermaid-ascii",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S01:T05",
+      "label": "T05: 全量回归验证",
+      "type": "task",
+      "confidence": "EXTRACTED"
     }
   ],
   "edges": [
@@ -367,7 +524,139 @@
       "to": "slice:M002:S03",
       "type": "contains",
       "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S01",
+      "to": "task:M003:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S01",
+      "to": "task:M003:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S01",
+      "to": "task:M003:S01:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S01",
+      "to": "task:M003:S01:T04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S02",
+      "to": "task:M003:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S02",
+      "to": "task:M003:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S02",
+      "to": "task:M003:S02:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S02",
+      "to": "task:M003:S02:T04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S03",
+      "to": "task:M003:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S03",
+      "to": "task:M003:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S03",
+      "to": "task:M003:S03:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S03",
+      "to": "task:M003:S03:T04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S03",
+      "to": "task:M003:S03:T05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M004",
+      "to": "slice:M004:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
     }
   ],
-  "builtAt": "2026-06-05T09:59:15.165Z"
+  "builtAt": "2026-06-06T17:27:09.373Z"
 }
