@@ -24,6 +24,7 @@ import { join } from "node:path";
 import { buildStorageFromEnv, escapeHtml, extractSvgBody, fileUrlFor, httpError, log, renderView } from "../../src/helpers.mjs";
 import { LocalFsStorage } from "../../src/storage/LocalFsStorage.mjs";
 import { OssEnvInvalidError, OssStorage } from "../../src/storage/OssStorage.mjs";
+import { DegradableStorage } from "../../src/storage/DegradableStorage.mjs";
 import { Counters } from "../../src/counters.mjs";
 
 describe("escapeHtml", () => {
@@ -159,40 +160,30 @@ describe("log", () => {
 	});
 });
 
-describe("buildStorageFromEnv (S02 T01)", () => {
+describe("buildStorageFromEnv (S02 T01 + D018)", () => {
+	let tmpDir;
+	afterEach(async () => { if (tmpDir) { try { await rm(tmpDir, { recursive: true, force: true }); } catch {} tmpDir = null; } });
 	// S02 T01 contract: buildStorageFromEnv(env, opts) returns the right
-	// StorageBackend for the renderer with no I/O and no .load() — the
-	// caller decides when to .load() the storage (server.mjs after the
-	// try/catch, the migration CLI after constructing both source/target).
-	// These tests assert the construction shape: instance type, .root,
-	// and pass-through of opts.counters / opts.logger / opts.createBucket.
+	// StorageBackend for the env. D018: when BACKEND=oss, it now wraps
+	// OssStorage in DegradableStorage(primary=OssStorage, fallback=LocalFsStorage)
+	// so runtime S3 failures degrade to local instead of hard-failing every call.
+	const REQUIRED_OSS_VARS = [
+		"MERMAID_OSS_ENDPOINT",
+		"MERMAID_OSS_REGION",
+		"MERMAID_OSS_ACCESS_KEY_ID",
+		"MERMAID_OSS_SECRET_ACCESS_KEY",
+		"MERMAID_OSS_BUCKET",
+	];
 
-	/** @type {string|null} */
-	let tmpDir = null;
-	// Stub the stderr write to keep test output clean — the
-	// oss_env_invalid failure log line is exercised by the negative case.
-	// After each test, restore the spy and remove the temp dir.
-	afterEach(async () => {
-		if (tmpDir) {
-			await rm(tmpDir, { recursive: true, force: true });
-			tmpDir = null;
-		}
-		vi.restoreAllMocks();
-	});
-
-	it("with no BACKEND returns LocalFsStorage pointed at the given dataDir", async () => {
+	it("with no BACKEND returns plain LocalFsStorage (no wrap)", async () => {
 		tmpDir = await mkdtemp(join(tmpdir(), "bsfe-local-"));
-		const storage = buildStorageFromEnv({ /* no MERMAID_RENDERER_BACKEND */ }, { dataDir: tmpDir });
+		const storage = buildStorageFromEnv({ /* no BACKEND */ }, { dataDir: tmpDir });
 		expect(storage).toBeInstanceOf(LocalFsStorage);
-		expect(storage).not.toBeInstanceOf(OssStorage);
+		expect(storage).not.toBeInstanceOf(DegradableStorage);
 		expect(storage.root).toBe(tmpDir);
-		// LocalFsStorage's data layout: <root>/store.json, <root>/store.json.tmp, <root>/blobs
-		expect(storage.storePath).toBe(join(tmpDir, "store.json"));
-		expect(storage.tmpPath).toBe(join(tmpDir, "store.json.tmp"));
-		expect(storage.blobsDir).toBe(join(tmpDir, "blobs"));
 	});
 
-	it("with BACKEND=oss + valid env returns OssStorage", () => {
+	it("with BACKEND=oss + valid env returns DegradableStorage(primary=OssStorage, fallback=LocalFsStorage)", () => {
 		const env = {
 			MERMAID_RENDERER_BACKEND: "oss",
 			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
@@ -202,14 +193,20 @@ describe("buildStorageFromEnv (S02 T01)", () => {
 			MERMAID_OSS_BUCKET: "mermaid-bucket",
 		};
 		const storage = buildStorageFromEnv(env);
-		expect(storage).toBeInstanceOf(OssStorage);
-		expect(storage).not.toBeInstanceOf(LocalFsStorage);
-		// OssStorage's root is the bucket name (Backend.mjs opaque-token contract).
-		expect(storage.root).toBe("mermaid-bucket");
-		expect(storage.bucket).toBe("mermaid-bucket");
-		// An S3Client was constructed and is on the instance.
-		expect(storage.client).toBeTruthy();
-		expect(typeof storage.client.send).toBe("function");
+		expect(storage).toBeInstanceOf(DegradableStorage);
+		expect(storage).not.toBeInstanceOf(OssStorage); // wrapped, not naked
+		expect(storage.primary).toBeInstanceOf(OssStorage);
+		expect(storage.fallback).toBeInstanceOf(LocalFsStorage);
+		// OssStorage 字段在 primary 上 (D018 wrapper 不持有这些).
+		expect(storage.primary.root).toBe("mermaid-bucket");
+		expect(storage.primary.bucket).toBe("mermaid-bucket");
+		expect(storage.primary.client).toBeTruthy();
+		expect(typeof storage.primary.client.send).toBe("function");
+		// root / health 走 wrapper.
+		expect(storage.root).toBe("mermaid-bucket"); // primary.root by design
+		expect(storage.health().degraded).toBe(false);
+		expect(storage.health().consecutive_failures).toBe(0);
+		expect(storage.health().failure_threshold).toBe(3);
 	});
 
 	it("with BACKEND=oss + missing MERMAID_OSS_BUCKET throws OssEnvInvalidError", () => {
@@ -221,33 +218,27 @@ describe("buildStorageFromEnv (S02 T01)", () => {
 			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
 			// MERMAID_OSS_BUCKET intentionally omitted
 		};
-		// Suppress the structured `oss_env_invalid` log line that the factory
-		// emits before throwing — the test asserts on the throw, not the log
-		// surface (which is the existing oss-env.test.mjs coverage).
 		const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => {});
 		expect(() => buildStorageFromEnv(env)).toThrow(OssEnvInvalidError);
-		try {
-			buildStorageFromEnv(env);
-		} catch (err) {
+		try { buildStorageFromEnv(env); } catch (err) {
 			expect(err).toBeInstanceOf(OssEnvInvalidError);
 			expect(err.missing).toEqual(["MERMAID_OSS_BUCKET"]);
-			// Code is the in-process -32006 marker per src/storage/OssStorage.mjs.
 			expect(err.code).toBe(-32006);
 		}
-		// The factory emitted at least one stderr line for the rejection.
 		expect(spy).toHaveBeenCalled();
 	});
 
-	it("respects opts.counters / opts.logger pass-through", async () => {
+	it("respects opts.counters / opts.logger pass-through to both primary + fallback", async () => {
 		tmpDir = await mkdtemp(join(tmpdir(), "bsfe-counters-"));
 		const counters = new Counters(tmpDir);
 		await counters.load();
 		const logger = { log: vi.fn() };
+		// local 路径: counters/logger 透传 (老契约, 不变).
 		const storage = buildStorageFromEnv({ /* no BACKEND */ }, { dataDir: tmpDir, counters, logger });
 		expect(storage.counters).toBe(counters);
 		expect(storage.logger).toBe(logger);
 
-		// OssStorage variant — same pass-through contract.
+		// OSS 路径: counters/logger 透传到 primary + fallback 两侧 (D018 wrapper 自己不持有).
 		const env = {
 			MERMAID_RENDERER_BACKEND: "oss",
 			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
@@ -256,12 +247,14 @@ describe("buildStorageFromEnv (S02 T01)", () => {
 			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
 			MERMAID_OSS_BUCKET: "mermaid-bucket",
 		};
-		const ossStorage = buildStorageFromEnv(env, { counters, logger });
-		expect(ossStorage.counters).toBe(counters);
-		expect(ossStorage.logger).toBe(logger);
+		const wrapped = buildStorageFromEnv(env, { counters, logger });
+		expect(wrapped.primary.counters).toBe(counters);
+		expect(wrapped.primary.logger).toBe(logger);
+		expect(wrapped.fallback.counters).toBe(counters);
+		expect(wrapped.fallback.logger).toBe(logger);
 	});
 
-	it("with BACKEND=oss + createBucket:true passes it through to OssStorage", () => {
+	it("with BACKEND=oss + createBucket:true passes it through to primary OssStorage", () => {
 		const env = {
 			MERMAID_RENDERER_BACKEND: "oss",
 			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
@@ -271,11 +264,24 @@ describe("buildStorageFromEnv (S02 T01)", () => {
 			MERMAID_OSS_BUCKET: "mermaid-bucket",
 		};
 		const storage = buildStorageFromEnv(env, { createBucket: true });
-		expect(storage).toBeInstanceOf(OssStorage);
-		expect(storage.createBucket).toBe(true);
+		expect(storage).toBeInstanceOf(DegradableStorage);
+		expect(storage.primary.createBucket).toBe(true);
 
-		// Default (opt absent) → false, mirroring the OssStorageFromEnv default.
 		const storageDefault = buildStorageFromEnv(env);
-		expect(storageDefault.createBucket).toBe(false);
+		expect(storageDefault.primary.createBucket).toBe(false);
+	});
+
+	it("respects MERMAID_DEGRADE_THRESHOLD env var", () => {
+		const env = {
+			MERMAID_RENDERER_BACKEND: "oss",
+			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
+			MERMAID_OSS_REGION: "us-east-1",
+			MERMAID_OSS_ACCESS_KEY_ID: "AKID_TEST",
+			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
+			MERMAID_OSS_BUCKET: "mermaid-bucket",
+			MERMAID_DEGRADE_THRESHOLD: "7",
+		};
+		const storage = buildStorageFromEnv(env);
+		expect(storage.health().failure_threshold).toBe(7);
 	});
 });

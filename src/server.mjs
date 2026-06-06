@@ -37,6 +37,7 @@ import { registerTools } from "./tools.mjs";
 import { Counters } from "./counters.mjs";
 import { tryListen } from "./port-fallback.mjs";
 import { recordError, setLastRenderMs, snapshot as healthSnapshot } from "./health-state.mjs";
+import { LocalFsStorage } from "./storage/LocalFsStorage.mjs";
 
 export { renderView } from "./helpers.mjs";
 export { extractSvgBody } from "./helpers.mjs";
@@ -52,7 +53,9 @@ const PUBLIC_DIR = join(ROOT, "public");
 const VERSION = "0.3.0";
 const startedAt = Date.now();
 
-const HTTP_ENABLED = process.env.MERMAID_RENDERER_HTTP === "1";
+// D017: HTTP 是附加能力,不是核心.端口全部被占时降级到 stdio-only,继续服务 MCP.
+// 写成 let 而非 const 是为了在 tryListen 失败回调里能 flip.
+let httpEnabled = process.env.MERMAID_RENDERER_HTTP === "1";
 const HTTP_PORT = Number.parseInt(process.env.MERMAID_RENDERER_PORT || "5300", 10);
 const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 
@@ -78,18 +81,27 @@ const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 const counters = new Counters(DATA);
 await counters.load();
 
+// D017: 可选集成失败不阻塞主流程.OSS env 缺失/无效时降级到 local,记 warn 日志,
+// 继续 boot 走 stdio MCP.R-D018 follow-up: 把 storage.health() 暴露给 /health,
+// 让运维可通过 degraded 字段发现"OSS 配错"而不是误以为 OSS 在工作.
 let storage;
 try {
 	storage = buildStorageFromEnv(process.env, { dataDir: DATA, counters, logger: log });
 } catch (err) {
-	// Missing or empty required MERMAID_OSS_* env var(s). The factory
-	// has already emitted the structured `oss_env_invalid` log line;
-	// we add an `oss_init_failed` line at the same level so the boot
-	// path is observable end-to-end, then exit(1) so the operator
-	// sees a clear failure (not a 2-second hang followed by a
-	// confusing stdio timeout from the parent MCP launcher).
-	log({ level: "error", event: "oss_init_failed", error: String(err?.message || err) });
-	process.exit(1);
+	// Factory 抛 OssEnvInvalidError (MERMAID_OSS_* 缺失) 或其他初始化错误.
+	// 降级到 local,记 level=warn 强警告(含错误详情 + fallback 标记),
+	// server 继续 boot. 任何 future optional 集成都走同一个模式.
+	const errorText = String(err?.message || err);
+	const missingVars = err?.missing;
+	log({
+		level: "warn",
+		event: "oss_init_failed_fallback",
+		error: errorText,
+		missing_env: missingVars,
+		fallback: "local",
+		hint: "OSS env vars missing/invalid; booting with local storage. Fix MERMAID_OSS_* to enable cloud.",
+	});
+	storage = new LocalFsStorage(DATA, { counters, logger: log });
 }
 await storage.load();
 
@@ -126,7 +138,7 @@ registerTools(mcp, {
 	render,
 	renderView,
 	dataDir: DATA,
-	httpEnabled: HTTP_ENABLED,
+	httpEnabled: httpEnabled,
 	httpHost: HTTP_HOST,
 	httpPort: HTTP_PORT,
 	counters,
@@ -143,7 +155,7 @@ log({ event: "mcp_stdio_connected" });
 // Optional HTTP server (standalone view + pin)
 // ============================================================================
 
-if (HTTP_ENABLED) {
+if (httpEnabled) {
 	const httpServer = createServer(async (req, res) => {
 		const url = new URL(req.url, `http://${HTTP_HOST}:${HTTP_PORT}`);
 		const cors = {
@@ -193,12 +205,18 @@ if (HTTP_ENABLED) {
 				setCors();
 				// S03 (R009) extension: merge counters.snapshot() and the
 				// health-state snapshot into the existing /health shape.
+				// D018 extension: storage.health() (only present when storage
+				// is a DegradableStorage — i.e. OSS backend was selected) is
+				// spread in to expose degraded / consecutive_failures /
+				// degraded_reason / fallback_root to operators. Backward
+				// compat: when storage has no .health() (pure LocalFsStorage),
+				// we omit the block — the /health shape stays byte-identical
+				// to M002.
 				// The full response is now:
 				//   {status, version, uptimeSec, ttlDays, total, pinned, unpinned,
-				//    counters, last_render_ms, last_errors}
-				// last_errors is always an array (possibly empty) per the
-				// S03 research decision. counters is always an object with
-				// the 6 documented keys (0-defaulted if unused).
+				//    counters, last_render_ms, last_errors,
+				//    storage: { degraded, degraded_reason, consecutive_failures, ... }}
+				const storageHealth = typeof storage.health === "function" ? storage.health() : null;
 				return json(res, 200, {
 					status: "ok",
 					version: VERSION,
@@ -207,6 +225,7 @@ if (HTTP_ENABLED) {
 					...storage.stats(),
 					counters: counters.snapshot(),
 					...healthSnapshot(),
+					...(storageHealth ? { storage: storageHealth } : {}),
 				});
 			}
 			setCors();
@@ -232,8 +251,18 @@ if (HTTP_ENABLED) {
 			log({ event: "http_listening", host: HTTP_HOST, port });
 		})
 		.catch((e) => {
-			log({ level: "error", event: "http_listen_failed", error: String(e?.message || e), port: HTTP_PORT });
-			process.exit(1);
+			// D017: 端口全被占不算致命错误,降级到 stdio-only 继续服务.
+			// /health / /view / /pin 这类 HTTP-only 端点不可用,但 stdio MCP
+			// 工具 (render_mermaid 等) 不受影响.
+			log({
+				level: "warn",
+				event: "http_listen_failed_fallback",
+				error: String(e?.message || e),
+				ports_tried: [HTTP_PORT, HTTP_PORT + 1, HTTP_PORT + 2],
+				fallback: "stdio-only",
+				hint: "All HTTP ports busy; server running in stdio MCP mode only.",
+			});
+			httpEnabled = false;
 		});
 }
 
@@ -256,7 +285,7 @@ function json(res, status, body) {
 // bucket name. Using storage.root keeps the boot record backend-agnostic
 // while making it obvious at a glance which backend is active (a /bucket
 // name vs a local /data path).
-log({ event: "boot", version: VERSION, data: storage.root, http: HTTP_ENABLED, stats: storage.stats() });
+log({ event: "boot", version: VERSION, data: storage.root, http: httpEnabled, stats: storage.stats() });
 
 // Graceful shutdown — let in-flight renders finish, then exit. The
 // setTimeout is unref'd so it doesn't hold the loop open if stdio

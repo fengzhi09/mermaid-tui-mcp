@@ -21,6 +21,7 @@ import { log as loggerLog } from "./logger.mjs";
 // keeps callers' namespaces independent of helpers' internal naming.
 import { LocalFsStorage as _LocalFsStorage } from "./storage/LocalFsStorage.mjs";
 import { OssStorageFromEnv as _OssStorageFromEnv } from "./storage/OssStorage.mjs";
+import { DegradableStorage as _DegradableStorage } from "./storage/DegradableStorage.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(resolve(__dirname, ".."), "public");
@@ -104,7 +105,9 @@ export const log = loggerLog;
  *   readTimeoutMs?: number,
  *   createBucket?: boolean,
  * }} [opts]
- * @returns {import("./storage/LocalFsStorage.mjs").LocalFsStorage | import("./storage/OssStorage.mjs").OssStorage}
+ * @returns {import("./storage/LocalFsStorage.mjs").LocalFsStorage | import("./storage/OssStorage.mjs").OssStorage | import("./storage/DegradableStorage.mjs").DegradableStorage}
+ *   当 MERMAID_RENDERER_BACKEND=oss 时返回 DegradableStorage (primary=OssStorage, fallback=LocalFsStorage),
+ *   /health 通过 storage.health() 读 degraded 状态. local 路径返回纯 LocalFsStorage.
  */
 export function buildStorageFromEnv(env, opts = {}) {
 	const backend = env.MERMAID_RENDERER_BACKEND;
@@ -114,7 +117,24 @@ export function buildStorageFromEnv(env, opts = {}) {
 		// when any are absent. Pass opts through verbatim so the migration
 		// CLI can wire createBucket / counters / logger the same way the
 		// server's boot path does.
-		return _OssStorageFromEnv(env, opts);
+		//
+		// D017: 包一层 DegradableStorage, 让 OSS 运行时失败 (S3 抖动/网络分区/
+		// 凭据过期) 不阻塞主流程 — 连续 N 次失败后切 local 兜底, /health 暴露
+		// degraded 状态. 阈值 N 默认 3, 可通过 opts.threshold 注入 (测试).
+		const primary = _OssStorageFromEnv(env, opts);
+		const fallbackDataDir = (opts && typeof opts.dataDir === "string" && opts.dataDir.length > 0)
+			? opts.dataDir
+			: (env.MERMAID_RENDERER_DATA || "");
+		const fallback = new _LocalFsStorage(fallbackDataDir, {
+			counters: opts && opts.counters !== undefined ? opts.counters : null,
+			logger: opts && opts.logger !== undefined ? opts.logger : null,
+		});
+		const thresholdRaw = Number.parseInt(env.MERMAID_DEGRADE_THRESHOLD || "", 10);
+		const threshold = Number.isFinite(thresholdRaw) && thresholdRaw > 0 ? thresholdRaw : undefined;
+		return new _DegradableStorage(primary, fallback, {
+			threshold,
+			logger: opts && opts.logger !== undefined ? opts.logger : null,
+		});
 	}
 	// "local" or unset — default backend. dataDir falls back to the
 	// server's documented env-var name; the CLI passes it explicitly so

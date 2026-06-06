@@ -1,14 +1,16 @@
-// tests/integration/oss-backend-boot.test.mjs — locks M002/S01/T03 wiring.
+// tests/integration/oss-backend-boot.test.mjs — locks M002/S01/T03 wiring + D018 graceful-degradation.
 //
 // What this file locks:
+//   D018 / graceful-degradation (replaces M002 T03 hard-exit behavior):
 //   - When MERMAID_RENDERER_BACKEND=oss is set and the required
 //     MERMAID_OSS_* env vars are absent (or empty), src/server.mjs
 //     (a) emits a structured stderr `oss_env_invalid` log line from
-//     the factory, (b) emits a structured stderr `oss_init_failed`
-//     log line from the boot-path catch, and (c) calls process.exit(1)
-//     so the operator sees a clear boot failure (not a 2-second hang
-//     followed by a confusing stdio timeout from the parent MCP
-//     launcher).
+//     the factory, (b) emits a structured stderr `oss_init_failed_fallback`
+//     log line from the boot-path catch, and (c) does NOT call
+//     process.exit(1) — it falls back to LocalFsStorage and continues
+//     to serve MCP stdio requests. The MCP launcher (gsd-pi / direct
+//     client) gets a working render_mermaid tool call, not a
+//     confusing stdio timeout.
 //   - The reported missing-var list includes every required
 //     MERMAID_OSS_* var name (mirrors the order contract from
 //     oss-env.test.mjs).
@@ -72,7 +74,7 @@ function spawnAndWaitForExit(env) {
 }
 
 describe("server boot — oss backend (T03 wiring)", () => {
-	it("exits with code 1 and emits oss_init_failed + oss_env_invalid when required MERMAID_OSS_* env vars are missing", async () => {
+	it("D018: env invalid does NOT exit; falls back to local + logs oss_init_failed_fallback (graceful-degradation)", async () => {
 		const { code, stderr } = await spawnAndWaitForExit({
 			MERMAID_RENDERER_BACKEND: "oss",
 			// Override every required var to "" so the factory's
@@ -85,16 +87,17 @@ describe("server boot — oss backend (T03 wiring)", () => {
 			MERMAID_OSS_SECRET_ACCESS_KEY: "",
 			MERMAID_OSS_BUCKET: "",
 		});
-		// The factory throws OssEnvInvalidError; the boot-path catch
-		// logs oss_init_failed and calls process.exit(1). We expect
-		// the real exit code (1), NOT a SIGTERM/SIGKILL-induced null.
-		expect(code).toBe(1);
-		expect(stderr).toContain("oss_init_failed");
+		// D018: server 不再 hard-exit. 0 表示 stdio closed 后自然退出.
+		expect(code).toBe(0);
+		// boot-path catch 写 `oss_init_failed_fallback` (D018 新名), 工厂仍写
+		// `oss_env_invalid` (M002 既有). 旧的 `oss_init_failed` 已删除 —
+		// 显式 grep 它不存在, 防止 D018 rollback 静默生效.
+		expect(stderr).toContain("oss_init_failed_fallback");
 		expect(stderr).toContain("oss_env_invalid");
-		// The factory reports the missing list in stable
-		// REQUIRED_ENV_VARS declaration order; all 5 names must
-		// appear in the stderr log lines (one in oss_env_invalid,
-		// one in the human-readable oss_init_failed message).
+		expect(stderr).not.toContain('"event":"oss_init_failed"');
+		expect(stderr).toContain('"fallback":"local"');
+		expect(stderr).toContain('"missing_env":["');
+		// 5 个变量名在 stderr 中.
 		for (const v of REQUIRED_VARS) {
 			expect(stderr).toContain(v);
 		}
