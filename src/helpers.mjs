@@ -131,8 +131,14 @@ export function buildStorageFromEnv(env, opts = {}) {
 		});
 		const thresholdRaw = Number.parseInt(env.MERMAID_DEGRADE_THRESHOLD || "", 10);
 		const threshold = Number.isFinite(thresholdRaw) && thresholdRaw > 0 ? thresholdRaw : undefined;
+		// S03 T03: 半开探测窗 (从 breaker_open 起到第一次允许探测的 ms).
+		// 默认 60000ms (OssStorage.breaker 默认). 通过 MERMAID_DEGRADE_HALF_OPEN_AFTER_MS
+		// 覆盖. 测试可走 opts.halfOpenAfterMs 直接注入.
+		const halfOpenAfterMsRaw = Number.parseInt(env.MERMAID_DEGRADE_HALF_OPEN_AFTER_MS || "", 10);
+		const halfOpenAfterMs = Number.isFinite(halfOpenAfterMsRaw) && halfOpenAfterMsRaw > 0 ? halfOpenAfterMsRaw : undefined;
 		return new _DegradableStorage(primary, fallback, {
 			threshold,
+			halfOpenAfterMs,
 			logger: opts && opts.logger !== undefined ? opts.logger : null,
 		});
 	}
