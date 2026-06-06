@@ -33,6 +33,20 @@
 // any concrete command class, it imports them lazily via
 // import("@aws-sdk/client-s3") at call sites so a stub that returns
 // the right shape works without instantiating real commands.
+//
+// S03 T02 surface (circuit-breaker state machine, D017):
+//   - `this.breaker` exposes the runtime state (closed/open,
+//     failureCount, lastFailure, openedAt, threshold, halfOpenAfterMs).
+//   - recordFailure(err) bumps failureCount, records the error, and
+//     trips the breaker to "open" when the threshold is reached.
+//   - canAttempt() returns whether a primary call may proceed; in the
+//     "open" state it permits a half-open probe after halfOpenAfterMs.
+//   - recordSuccess() closes the breaker and zeroes the counter.
+//   - The save()/readSvg()/load() paths do NOT auto-invoke these;
+//     S03 T03's DegradableStorage wrapper drives the state machine
+//     based on its own call outcomes. This keeps the breaker a pure
+//     state object that the wrapper owns, instead of two independent
+//     failure-trackers racing each other.
 
 import {
 	CreateBucketCommand,
@@ -200,13 +214,17 @@ export class OssStorage {
 	 *   logger?: {log?: Function} | null,
 	 *   readTimeoutMs?: number,
 	 *   createBucket?: boolean,
+	 *   breaker?: {
+	 *     threshold?: number,
+	 *     halfOpenAfterMs?: number,
+	 *   } | null,
 	 * }} opts
 	 */
 	constructor(opts) {
 		if (!opts || typeof opts !== "object") {
 			throw new TypeError("OssStorage requires an options object");
 		}
-		const { bucket, prefix, client, counters, logger, readTimeoutMs, createBucket } = opts;
+		const { bucket, prefix, client, counters, logger, readTimeoutMs, createBucket, breaker } = opts;
 		if (typeof bucket !== "string" || bucket.length === 0) {
 			throw new TypeError("OssStorage requires a non-empty bucket name");
 		}
@@ -249,6 +267,56 @@ export class OssStorage {
 		// the index, the same way LocalFsStorage mutates and persists.
 		/** @type {Map<string, import("./Backend.mjs").Entry>} */
 		this.store = new Map();
+
+		// Circuit-breaker state (S03 T02, D017). The state machine is
+		// exposed on `this.breaker` so a wrapper (DegradableStorage in
+		// S03 T03) can drive the transitions between attempts: it
+		// consults `canAttempt()` before each primary call, calls
+		// `recordFailure(err)` when the call throws, and calls
+		// `recordSuccess()` when it returns. The state machine itself
+		// is intentionally NOT auto-invoked by save()/readSvg()/load() —
+		// every existing test path must keep working unchanged.
+		//
+		// Shape:
+		//   state:           "closed" | "open" — a closed breaker
+		//                    permits attempts; an open breaker permits
+		//                    one probe after `halfOpenAfterMs` elapses
+		//                    from `openedAt`. There is no explicit
+		//                    "half-open" state — the probe is just a
+		//                    successful call while in `open` that the
+		//                    wrapper observes via recordSuccess().
+		//   failureCount:    running counter of consecutive failures.
+		//                    Reset to 0 on recordSuccess().
+		//   lastFailure:     {message, at} | null — the most recent
+		//                    failure's message + epoch ms.
+		//   openedAt:        Date.now() when the breaker last transitioned
+		//                    to "open". null while closed.
+		//   threshold:       how many consecutive failures trip the
+		//                    breaker. Default 3 (mirrors the D018
+		//                    DegradableStorage default and the empirical
+		//                    M002 S3 timeout count).
+		//   halfOpenAfterMs: how long after `openedAt` the breaker permits
+		//                    a probe. Default 60_000 (1 minute).
+		this.breaker = {
+			state: "closed",
+			failureCount: 0,
+			lastFailure: null,
+			openedAt: null,
+			threshold: 3,
+			halfOpenAfterMs: 60_000,
+		};
+		if (breaker && typeof breaker === "object") {
+			if (typeof breaker.threshold === "number" && Number.isFinite(breaker.threshold) && breaker.threshold > 0) {
+				this.breaker.threshold = Math.floor(breaker.threshold);
+			}
+			if (typeof breaker.halfOpenAfterMs === "number" && Number.isFinite(breaker.halfOpenAfterMs) && breaker.halfOpenAfterMs > 0) {
+				this.breaker.halfOpenAfterMs = Math.floor(breaker.halfOpenAfterMs);
+			}
+			// state / failureCount / lastFailure / openedAt always
+			// start fresh — a new OssStorage is always a closed breaker
+			// with zero history, even if the caller pre-populates
+			// breaker opts (e.g. resuming from a persisted counter).
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -337,6 +405,103 @@ export class OssStorage {
 				: String(firstErr);
 			throw new StorageWriteError(msg);
 		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Circuit-breaker state machine (S03 T02)
+	//
+	// The breaker is driven by an external caller (DegradableStorage,
+	// S03 T03). save() / readSvg() / load() / etc. do NOT touch it
+	// — they raise StorageReadError / StorageWriteError / etc. on
+	// failure, and the wrapper observes the throw and calls
+	// recordFailure() / recordSuccess() itself. The methods here are
+	// the pure state-machine operations on `this.breaker`:
+	//
+	//   recordFailure(err) — bumps failureCount, records the error,
+	//                        and if the count reaches `threshold`
+	//                        transitions the breaker to "open" and
+	//                        stamps `openedAt = Date.now()`. Also
+	//                        re-stamps `openedAt` if the breaker is
+	//                        already open and a probe fails — this
+	//                        extends the cool-down and prevents a
+	//                        run of bad probes from reopening the
+	//                        gateway prematurely.
+	//   canAttempt()       — closed → true. open + openedAt set
+	//                        + (now - openedAt) > halfOpenAfterMs
+	//                        → true (probe allowed). Otherwise false.
+	//   recordSuccess()    — resets the breaker to closed: zeroes
+	//                        failureCount, clears lastFailure, sets
+	//                        state="closed", openedAt=null. Called by
+	//                        the wrapper when a primary call resolves.
+	//
+	// The return shapes ({state, failureCount, opened?}) are kept
+	// small so the wrapper can log them in a single structured event
+	// (`breaker_open` / `breaker_close`) without further translation.
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Record a runtime failure against the breaker. Always bumps
+	 * `failureCount` and updates `lastFailure`. When `failureCount`
+	 * reaches `threshold`, transitions `state` to "open" and stamps
+	 * `openedAt = Date.now()`. If the breaker is already "open" and
+	 * another failure comes in (a failed half-open probe), re-stamps
+	 * `openedAt` so the cool-down window restarts.
+	 *
+	 * @param {unknown} err
+	 * @returns {{state: string, failureCount: number, opened: boolean}}
+	 */
+	recordFailure(err) {
+		const message = err && typeof err === "object" && typeof err.message === "string"
+			? err.message
+			: String(err);
+		this.breaker.failureCount += 1;
+		this.breaker.lastFailure = { message, at: Date.now() };
+		const reachedThreshold = this.breaker.failureCount >= this.breaker.threshold;
+		if (reachedThreshold) {
+			const wasClosed = this.breaker.state === "closed";
+			this.breaker.state = "open";
+			this.breaker.openedAt = Date.now();
+			// `opened: true` signals the transition event for the
+			// caller's structured log. A failed probe also re-stamps
+			// openedAt (extending the window) but does NOT report
+			// `opened: true` again — the breaker did not transition.
+			return { state: this.breaker.state, failureCount: this.breaker.failureCount, opened: wasClosed };
+		}
+		return { state: this.breaker.state, failureCount: this.breaker.failureCount, opened: false };
+	}
+
+	/**
+	 * Whether a call may attempt the primary backend. Pure read of
+	 * `this.breaker`; no side effects. Closed: yes. Open: only after
+	 * `halfOpenAfterMs` has elapsed since `openedAt` (the half-open
+	 * probe). Open with `openedAt == null` (defensive — should not
+	 * happen post-construction): no.
+	 *
+	 * @returns {boolean}
+	 */
+	canAttempt() {
+		if (this.breaker.state === "closed") return true;
+		if (this.breaker.state === "open") {
+			if (this.breaker.openedAt == null) return false;
+			return Date.now() - this.breaker.openedAt > this.breaker.halfOpenAfterMs;
+		}
+		return false;
+	}
+
+	/**
+	 * Record a runtime success. Closes the breaker. Always sets
+	 * state="closed" and zeroes failureCount; clears lastFailure
+	 * and openedAt so a future failure starts a fresh window. The
+	 * wrapper calls this on a successful primary-call resolution.
+	 *
+	 * @returns {{state: string, failureCount: number}}
+	 */
+	recordSuccess() {
+		this.breaker.failureCount = 0;
+		this.breaker.state = "closed";
+		this.breaker.openedAt = null;
+		this.breaker.lastFailure = null;
+		return { state: this.breaker.state, failureCount: this.breaker.failureCount };
 	}
 
 	// -------------------------------------------------------------------------

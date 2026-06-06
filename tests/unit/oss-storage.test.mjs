@@ -26,6 +26,13 @@
 //   (h) GetObject NoSuchKey returns null
 //   (i) bucket-not-found with createBucket=true creates the bucket
 //   (j) bucket-not-found with createBucket=false throws
+//   (k) circuit-breaker state machine (S03 T02):
+//       - recordFailure × threshold trips state to "open"
+//       - canAttempt respects halfOpenAfterMs (closed → true, open +
+//         within window → false, open + past window → true)
+//       - recordSuccess closes the breaker
+//       - constructor opts.breaker.threshold / halfOpenAfterMs override
+//       - Date.now() boundary at exactly halfOpenAfterMs vs +1ms
 //
 // Conventions:
 //   - Each test gets a fresh stub via makeStubClient() — no shared state
@@ -254,6 +261,10 @@ function makeStorage(opts = {}) {
 		logger: opts.logger || null,
 		readTimeoutMs: opts.readTimeoutMs || 5000,
 		createBucket: opts.createBucket || false,
+		// Thread the breaker opt through so the (k) circuit-breaker
+		// tests can override threshold / halfOpenAfterMs without
+		// having to construct OssStorage directly.
+		breaker: opts.breaker || null,
 	});
 	return { storage, client };
 }
@@ -966,6 +977,166 @@ describe("OssStorage — T02 full StorageBackend", () => {
 			// No throw, no spy — the call is silent. We just assert
 			// the operation completed.
 			expect(ctx.storage.has("mNoLog")).toBe(true);
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// (k) Circuit-breaker state machine (S03 T02, D017).
+	//
+	// The breaker is a pure state object on the OssStorage instance;
+	// save()/readSvg()/load() do NOT auto-invoke it. The 5 tests
+	// below cover the public state-machine surface (recordFailure /
+	// canAttempt / recordSuccess) and the constructor override path
+	// (opts.breaker.threshold / halfOpenAfterMs). T03's
+	// DegradableStorage wrapper is what will wire this into the
+	// runtime call path; here we just lock the state machine.
+	// -------------------------------------------------------------------------
+	describe("(k) circuit-breaker state machine (S03 T02)", () => {
+		it("recordFailure × threshold (default 3) trips the breaker to \"open\"", () => {
+			ctx = makeStorage();
+			// Initial state: closed, zero history.
+			expect(ctx.storage.breaker.state).toBe("closed");
+			expect(ctx.storage.breaker.failureCount).toBe(0);
+			expect(ctx.storage.breaker.openedAt).toBeNull();
+			expect(ctx.storage.breaker.lastFailure).toBeNull();
+			expect(ctx.storage.breaker.threshold).toBe(3);
+
+			// 1st failure: still closed.
+			const r1 = ctx.storage.recordFailure(new Error("e1"));
+			expect(r1).toEqual({ state: "closed", failureCount: 1, opened: false });
+			expect(ctx.storage.breaker.state).toBe("closed");
+			expect(ctx.storage.breaker.failureCount).toBe(1);
+			expect(ctx.storage.breaker.lastFailure.message).toBe("e1");
+			expect(typeof ctx.storage.breaker.lastFailure.at).toBe("number");
+
+			// 2nd failure: still closed.
+			const r2 = ctx.storage.recordFailure(new Error("e2"));
+			expect(r2).toEqual({ state: "closed", failureCount: 2, opened: false });
+			expect(ctx.storage.breaker.state).toBe("closed");
+
+			// 3rd failure: trips to open, reports opened=true.
+			const tBefore = Date.now();
+			const r3 = ctx.storage.recordFailure(new Error("e3"));
+			const tAfter = Date.now();
+			expect(r3).toEqual({ state: "open", failureCount: 3, opened: true });
+			expect(ctx.storage.breaker.state).toBe("open");
+			expect(ctx.storage.breaker.failureCount).toBe(3);
+			expect(ctx.storage.breaker.openedAt).toBeGreaterThanOrEqual(tBefore);
+			expect(ctx.storage.breaker.openedAt).toBeLessThanOrEqual(tAfter);
+			expect(ctx.storage.breaker.lastFailure.message).toBe("e3");
+		});
+
+		it("canAttempt: closed → true; open + past halfOpenAfterMs → true; open + within window → false", () => {
+			ctx = makeStorage();
+			// Closed: always true.
+			expect(ctx.storage.canAttempt()).toBe(true);
+
+			// Open + within window (default 60s): false.
+			ctx.storage.breaker.state = "open";
+			ctx.storage.breaker.openedAt = Date.now() - 1000; // 1s ago, well within 60s
+			expect(ctx.storage.canAttempt()).toBe(false);
+
+			// Open + past window: true (half-open probe allowed).
+			ctx.storage.breaker.openedAt = Date.now() - 70_000; // 70s ago, past 60s
+			expect(ctx.storage.canAttempt()).toBe(true);
+
+			// Defensive: open + openedAt=null → false (should not happen
+			// post-construction, but the guard is explicit).
+			ctx.storage.breaker.openedAt = null;
+			expect(ctx.storage.canAttempt()).toBe(false);
+		});
+
+		it("recordSuccess closes the breaker (state=closed, failureCount=0, openedAt=null, lastFailure=null)", () => {
+			ctx = makeStorage();
+			// Pre-condition: simulate a tripped breaker.
+			ctx.storage.breaker.state = "open";
+			ctx.storage.breaker.failureCount = 5;
+			ctx.storage.breaker.openedAt = Date.now() - 30_000;
+			ctx.storage.breaker.lastFailure = { message: "prior", at: Date.now() - 30_000 };
+
+			const r = ctx.storage.recordSuccess();
+			expect(r).toEqual({ state: "closed", failureCount: 0 });
+			expect(ctx.storage.breaker.state).toBe("closed");
+			expect(ctx.storage.breaker.failureCount).toBe(0);
+			expect(ctx.storage.breaker.openedAt).toBeNull();
+			expect(ctx.storage.breaker.lastFailure).toBeNull();
+
+			// canAttempt is true again.
+			expect(ctx.storage.canAttempt()).toBe(true);
+		});
+
+		it("constructor opts.breaker.threshold / halfOpenAfterMs override the defaults", () => {
+			// Build a fresh OssStorage with a custom breaker config. We
+			// bypass makeStorage() because the helper does not thread
+			// `breaker` through (the existing 25 tests do not need it).
+			const client = makeStubClient();
+			const storage = new OssStorage({
+				bucket: "test-bucket",
+				prefix: "",
+				client,
+				breaker: { threshold: 2, halfOpenAfterMs: 5000 },
+			});
+
+			// Default state still starts fresh; only the two tunable
+			// fields are overridden.
+			expect(storage.breaker.state).toBe("closed");
+			expect(storage.breaker.failureCount).toBe(0);
+			expect(storage.breaker.threshold).toBe(2);
+			expect(storage.breaker.halfOpenAfterMs).toBe(5000);
+
+			// 1st failure: still closed (threshold=2).
+			storage.recordFailure(new Error("a"));
+			expect(storage.breaker.state).toBe("closed");
+			// 2nd failure: trips to open.
+			const r2 = storage.recordFailure(new Error("b"));
+			expect(r2).toEqual({ state: "open", failureCount: 2, opened: true });
+			expect(storage.breaker.state).toBe("open");
+
+			// halfOpenAfterMs override is respected: openedAt - 4s
+			// (within 5s) → false; openedAt - 6s (past 5s) → true.
+			storage.breaker.openedAt = Date.now() - 4_000;
+			expect(storage.canAttempt()).toBe(false);
+			storage.breaker.openedAt = Date.now() - 6_000;
+			expect(storage.canAttempt()).toBe(true);
+
+			// Constructor should ignore non-finite / non-positive opts
+			// (defensive). Build a second storage with bogus values and
+			// confirm the defaults survive.
+			const client2 = makeStubClient();
+			const storage2 = new OssStorage({
+				bucket: "test-bucket",
+				prefix: "",
+				client: client2,
+				breaker: { threshold: -1, halfOpenAfterMs: 0 },
+			});
+			expect(storage2.breaker.threshold).toBe(3);
+			expect(storage2.breaker.halfOpenAfterMs).toBe(60_000);
+		});
+
+		it("time window boundary: openedAt + halfOpenAfterMs exactly → canAttempt=false; +1ms → true", () => {
+			// Short window so the test is fast and the boundary math
+			// is easy to read. We mock Date.now() for determinism —
+			// real-time waiting would be flaky on slow CI.
+			ctx = makeStorage({ breaker: { halfOpenAfterMs: 100 } });
+			ctx.storage.breaker.state = "open";
+			const openedAt = 1_000_000;
+			ctx.storage.breaker.openedAt = openedAt;
+
+			const nowSpy = vi.spyOn(Date, "now");
+
+			// (now - openedAt) === halfOpenAfterMs → NOT > 100 → false.
+			nowSpy.mockReturnValue(openedAt + 100);
+			expect(ctx.storage.canAttempt()).toBe(false);
+
+			// (now - openedAt) === halfOpenAfterMs + 1 → true.
+			nowSpy.mockReturnValue(openedAt + 101);
+			expect(ctx.storage.canAttempt()).toBe(true);
+
+			// (now - openedAt) === 0 (just opened) → false.
+			nowSpy.mockReturnValue(openedAt);
+			expect(ctx.storage.canAttempt()).toBe(false);
+
+			nowSpy.mockRestore();
 		});
 	});
 });
