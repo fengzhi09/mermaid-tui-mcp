@@ -24,7 +24,8 @@
 // on every put, and every hour.
 
 import { createServer } from "node:http";
-import { dirname, join, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
@@ -200,6 +201,42 @@ if (httpEnabled) {
 				if (!svg) throw httpError(404, "svg blob missing");
 				res.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8" });
 				return res.end(svg);
+			}
+			// M003 S02 T02: static-file route for /themes/* (serves
+			// public/themes/main.css and the 4 individual theme files).
+			// Without this, view.html's <link rel="stylesheet" href="/themes/main.css">
+			// returns 404 and the page renders unstyled. Path is
+			// restricted to public/themes/ to prevent traversal
+			// (e.g. /themes/../../etc/passwd). The theme files are
+			// static — no MIME sniffing, no auth — matching the
+			// S02-PLAN "static css" decision.
+			if (req.method === "GET" && url.pathname.startsWith("/themes/")) {
+				const themesRoot = resolve(join(PUBLIC_DIR, "themes"));
+				const rel = url.pathname.slice("/themes/".length);
+				if (rel.split("/").some((s) => s === "" || s === "." || s === "..")) {
+					throw httpError(400, "invalid path");
+				}
+				const filePath = resolve(join(themesRoot, rel));
+				if (filePath !== themesRoot && !filePath.startsWith(themesRoot + sep)) {
+					throw httpError(403, "forbidden");
+				}
+				let content;
+				try {
+					content = await readFile(filePath);
+				} catch (e) {
+					if (e?.code === "ENOENT") throw httpError(404, "not found");
+					throw e;
+				}
+				const ext = extname(filePath).toLowerCase();
+				const mime =
+					ext === ".css" ? "text/css; charset=utf-8"
+					: ext === ".js" ? "application/javascript; charset=utf-8"
+					: ext === ".svg" ? "image/svg+xml; charset=utf-8"
+					: ext === ".png" ? "image/png"
+					: "application/octet-stream";
+				setCors();
+				res.writeHead(200, { "Content-Type": mime });
+				return res.end(content);
 			}
 			if (req.method === "GET" && url.pathname === "/health") {
 				setCors();
