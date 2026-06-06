@@ -140,6 +140,15 @@ export function buildStorageFromEnv(env, opts = {}) {
 			threshold,
 			halfOpenAfterMs,
 			logger: opts && opts.logger !== undefined ? opts.logger : null,
+			// S03 T03: pass counters through so _emitBreakerOpen's
+			// `breaker_trips_count` increment is observable via /health
+			// (and the on-disk data/counters.json). The unit tests
+			// exercise this directly; the production factory path was
+			// missing the wire, so the runtime counter never bumped
+			// under a real boot. Without this, the operator's
+			// "how many times has OSS flapped this hour?" question
+			// (the SLO behind the D018 / R010 breaker) is unanswerable.
+			counters: opts && opts.counters !== undefined ? opts.counters : null,
 		});
 	}
 	// "local" or unset — default backend. dataDir falls back to the
