@@ -64,9 +64,12 @@ const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 // can plug in without re-plumbing server.mjs. "local" (default) uses the
 // on-disk LocalFsStorage; "oss" builds a S3-compatible OssStorage from the
 // MERMAID_OSS_* env vars (T03). On missing/empty required vars the factory
-// throws OssEnvInvalidError; we catch it, emit an `oss_init_failed` log line,
-// and exit(1) so the operator sees a clear boot failure (not a silent
-// 2-second hang followed by a confusing stdio timeout).
+// throws OssEnvInvalidError; M003/S03/T01 routes that to the degraded-boot
+// path (emit `oss_init_degraded` warn-level log, fall back to LocalFsStorage,
+// continue serving MCP) — OSS is an optional integration per D017. The
+// factory itself has already emitted `oss_env_invalid` (level=error) so the
+// operator's log shipper sees the configuration issue even if the boot log
+// is missed.
 // S02 (T01) collapsed the 15-line if/else into a single buildStorageFromEnv
 // call. The helper in src/helpers.mjs is the same factory the migration CLI
 // (bin/migrate-to-oss.mjs) uses — one source of truth for "given an env,
@@ -85,24 +88,47 @@ await counters.load();
 // D017: 可选集成失败不阻塞主流程.OSS env 缺失/无效时降级到 local,记 warn 日志,
 // 继续 boot 走 stdio MCP.R-D018 follow-up: 把 storage.health() 暴露给 /health,
 // 让运维可通过 degraded 字段发现"OSS 配错"而不是误以为 OSS 在工作.
+//
+// M003/S03/T01: 把 boot 路径的 catch 分流 — OssEnvInvalidError 是 optional
+// 集成的配置错(降级 + 计数 + 强 warn),其他初始化错误是真正致命的(仍
+// exit(1),让运维看见). 工厂已在内部发过 `oss_env_invalid` (level=error)
+// 反映"OSS 配置有问题",boot 这里只发 `oss_init_degraded` (level=warn)
+// 反映"我已优雅降级, server 仍可工作".
 let storage;
 try {
 	storage = buildStorageFromEnv(process.env, { dataDir: DATA, counters, logger: log });
 } catch (err) {
-	// Factory 抛 OssEnvInvalidError (MERMAID_OSS_* 缺失) 或其他初始化错误.
-	// 降级到 local,记 level=warn 强警告(含错误详情 + fallback 标记),
-	// server 继续 boot. 任何 future optional 集成都走同一个模式.
-	const errorText = String(err?.message || err);
-	const missingVars = err?.missing;
-	log({
-		level: "warn",
-		event: "oss_init_failed_fallback",
-		error: errorText,
-		missing_env: missingVars,
-		fallback: "local",
-		hint: "OSS env vars missing/invalid; booting with local storage. Fix MERMAID_OSS_* to enable cloud.",
-	});
-	storage = new LocalFsStorage(DATA, { counters, logger: log });
+	if (err && err.name === "OssEnvInvalidError") {
+		// Optional 集成 (OSS) 配置错. 降级到 local, 不退出.
+		const errorText = String(err?.message || err);
+		const missing = Array.isArray(err.missing) ? err.missing : [];
+		// JSON-RPC-family code -32006 mirrors OssEnvInvalidError.code so
+		// downstream log shippers can correlate factory + boot events.
+		log({
+			level: "warn",
+			event: "oss_init_degraded",
+			code: -32006,
+			missing,
+			fallback: "local",
+			hint: "OSS env vars missing/invalid; booting with local storage. Fix MERMAID_OSS_* to enable cloud.",
+		});
+		// Bump the M003 counter so /health surfaces this degraded boot.
+		if (counters) {
+			await counters.increment("oss_init_degraded_count");
+		}
+		storage = new LocalFsStorage(DATA, { counters, logger: log });
+	} else {
+		// 非 OssEnvInvalidError = 真正致命的初始化错 (如: 本地 fs 不可写,
+		// 工厂内部崩溃). 退出让运维看到, 不要悄悄降级掩盖问题.
+		const errorText = String(err?.message || err);
+		log({
+			level: "error",
+			event: "oss_init_failed",
+			error: errorText,
+			hint: "Non-OssEnvInvalidError during storage init; aborting boot so the operator sees the failure.",
+		});
+		process.exit(1);
+	}
 }
 await storage.load();
 

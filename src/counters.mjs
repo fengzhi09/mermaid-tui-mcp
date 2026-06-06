@@ -22,8 +22,11 @@ import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-/** The 6 counter keys the /health surface reads. Unknown keys are also
- *  accepted by increment() (forward-compat) but are NOT seeded on load. */
+/** The counter keys the /health surface reads. Unknown keys are also
+ *  accepted by increment() (forward-compat) but are NOT seeded on load.
+ *  M003/S03/T01 adds oss_init_degraded_count — the count of times the
+ *  server boot path caught OssEnvInvalidError and fell back to local.
+ *  (breaker_trips_count is added in T04 alongside /health.backend.) */
 export const COUNTER_KEYS = [
 	"render_total",
 	"render_errors",
@@ -31,6 +34,7 @@ export const COUNTER_KEYS = [
 	"storage_write_retries",
 	"sweep_runs",
 	"sweep_removed",
+	"oss_init_degraded_count",
 ];
 
 /** Build a fresh-zero values map. */
