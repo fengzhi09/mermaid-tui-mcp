@@ -1,0 +1,32 @@
+/*
+ * Theme: care
+ * Source: 自研护眼 (paper-feel beige, low saturation, low blue light)
+ * Design intent: A muted, low-saturation beige canvas that mimics warm
+ *                paper, intended for long reading sessions where harsh
+ *                whites cause eye fatigue. Sage-green primary (#8a9a5b)
+ *                avoids the high-energy of typical link blues. Mustard
+ *                accent (#b58900) nods to Solarized but reads as a calm
+ *                highlight. Code blocks invert to a desaturated olive
+ *                surface for cohesion.
+ * Adjustment: --text-muted changed from the spec'd #7a7a6a to #5e5e58
+ *             so the secondary-text/bg pair clears WCAG AA 4.5:1. The
+ *             "low contrast" design intent is preserved by keeping the
+ *             primary text (#595959) and bg (#e8e0c8) in a low-saturation
+ *             beige family; only the muted gray is darkened enough to
+ *             remain readable against the bright cream background.
+ * Contrast (computed by .gsd/exec/verify-theme-contrast.mjs):
+ *   text/bg=5.31, text-muted/bg=4.95, code-text/code-bg=5.32 — all pass WCAG AA
+ */
+:root[data-theme="care"] {
+  --bg: #e8e0c8;
+  --surface: #d8d0b8;
+  --surface-2: #c8c0a8;
+  --text: #595959;
+  --text-muted: #5e5e58;
+  --primary: #8a9a5b;
+  --accent: #b58900;
+  --border: #b8b098;
+  --shadow: rgba(89, 89, 89, 0.06);
+  --code-bg: #5a5a4a;
+  --code-text: #e8e0c8;
+}

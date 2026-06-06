@@ -15,6 +15,30 @@
 
 import { renderMermaidSVG, renderMermaidASCII } from "beautiful-mermaid";
 
+// --- Theme injection (M003 S02 T03) ---
+//
+// CSS-variable theme for SVG output. The keys map 1:1 to the CSS custom
+// properties declared on `:root[data-theme="..."]` selectors in
+// public/themes/main.css. Using `var(--xxx)` lets the view page's theme
+// switcher re-color the embedded SVG live — no re-render needed when the
+// user clicks a theme button. `transparent: true` suppresses the SVG's
+// own background <rect> fill so the page's --bg shows through unchanged.
+//
+// ASCII output path intentionally stays on the default AsciiTheme (no
+// opts) — stdio MCP clients see a hex-coloured ASCII dump and don't
+// benefit from CSS-var theming; mixing var() into the ASCII renderer
+// would break those consumers.
+const THEME_OPTS = Object.freeze({
+	bg: "var(--bg)",
+	fg: "var(--text)",
+	line: "var(--border)",
+	accent: "var(--accent)",
+	muted: "var(--text-muted)",
+	surface: "var(--surface)",
+	border: "var(--border)",
+	transparent: true,
+});
+
 // --- Test seams (no-ops when not called; live alongside render()) ---
 //
 // Default = real beautiful-mermaid renderers. Tests can replace either via
@@ -64,7 +88,7 @@ export async function render(code) {
 	// /^mermaid parse error:/ keep working.
 	let svg;
 	try {
-		svg = svgImplOverride ? svgImplOverride(code) : renderMermaidSVG(code);
+		svg = svgImplOverride ? svgImplOverride(code) : renderMermaidSVG(code, THEME_OPTS);
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
 		throw new Error(`mermaid parse error: ${msg.slice(0, 500)}`);

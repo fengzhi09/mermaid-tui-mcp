@@ -118,6 +118,14 @@ describe("HTTP integration", () => {
 		expect(health.version.length).toBeGreaterThan(0);
 		expect(health.total).toBeGreaterThanOrEqual(1);
 
+		// T04 /health extension: top-level backend + last_oss_failure
+		// surface the actual storage status. This is a clean local boot
+		// (no MERMAID_RENDERER_BACKEND=oss), so backend === "local" and
+		// last_oss_failure === null (no OSS path was attempted).
+		expect(health.backend).toBe("local");
+		expect(health.last_oss_failure).toBeNull();
+		expect(health.boot_degraded).toBe(false);
+
 		// 2. GET /raw/svg?id=<id> — must return the raw SVG body
 		const svgRes = await fetch(`http://127.0.0.1:${port}/raw/svg?id=${id}`);
 		expect(svgRes.status).toBe(200);
@@ -250,5 +258,95 @@ describe("HTTP integration", () => {
 		// render_errors counter tracks all 6 failures (counter has no
 		// bounded ring — only the in-memory ring buffer does).
 		expect(health.counters.render_errors).toBe(6);
+	});
+
+	// ==========================================================================
+	// S03 (T04) — /health extension: top-level `backend` + `last_oss_failure`
+	// + counters.oss_init_degraded_count + counters.breaker_trips_count
+	// ==========================================================================
+	//
+	// The T04 demo requirement: "MERMAID_RENDERER_BACKEND=oss + 缺 env →
+	// server 启动 (不退), /health backend='degraded' + warn 日志, 首个
+	// render_mermaid 仍正常返回 ASCII (走 local)". This test boots the
+	// server with the degraded config, then exercises /health to lock
+	// the new surface.
+
+	it("/health surfaces backend='degraded' + last_oss_failure when booted with oss backend + missing env", async () => {
+		// Close the default beforeEach server so we can spawn a fresh
+		// one with the degraded env. We track it locally so the
+		// afterEach cleanup of the outer server doesn't run twice.
+		if (server) {
+			try { await server.close(); } catch { /* swallow */ }
+			server = null;
+		}
+		const degradedDataDir = await mkdtemp(join(tmpdir(), "mermaid-int-degraded-"));
+		const degradedPort = await getFreePort();
+		const degradedServer = spawnServer({
+			env: {
+				MERMAID_RENDERER_DATA: degradedDataDir,
+				MERMAID_RENDERER_HTTP: "1",
+				MERMAID_RENDERER_PORT: String(degradedPort),
+				MERMAID_RENDERER_HOST: "127.0.0.1",
+				MERMAID_RENDERER_BACKEND: "oss",
+				// Force every required var to "" so the factory's
+				// missing-var check fires regardless of parent env.
+				MERMAID_OSS_ENDPOINT: "",
+				MERMAID_OSS_REGION: "",
+				MERMAID_OSS_ACCESS_KEY_ID: "",
+				MERMAID_OSS_SECRET_ACCESS_KEY: "",
+				MERMAID_OSS_BUCKET: "",
+			},
+		});
+		try {
+			await waitForHealth(degradedPort);
+
+			// 1. GET /health — must report backend='degraded' + a populated
+			// last_oss_failure record + boot_degraded=true.
+			const healthRes = await fetch(`http://127.0.0.1:${degradedPort}/health`);
+			expect(healthRes.status).toBe(200);
+			const health = await healthRes.json();
+
+			expect(health.backend).toBe("degraded");
+			expect(health.boot_degraded).toBe(true);
+			expect(health.last_oss_failure).not.toBeNull();
+			expect(health.last_oss_failure.code).toBe(-32006);
+			expect(typeof health.last_oss_failure.ts).toBe("number");
+			expect(health.last_oss_failure.ts).toBeGreaterThan(0);
+			expect(typeof health.last_oss_failure.msg).toBe("string");
+			expect(health.last_oss_failure.msg.length).toBeGreaterThan(0);
+			// The recorded message references the missing env vars.
+			expect(health.last_oss_failure.msg).toMatch(/MERMAID_OSS_BUCKET/);
+
+			// 2. The persistent counter for boot-degraded should be 1.
+			expect(health.counters.oss_init_degraded_count).toBe(1);
+			// breaker_trips_count is 0 (the breaker never tripped — boot
+			// fell back before any primary call could fail).
+			expect(health.counters.breaker_trips_count).toBe(0);
+
+			// 3. Even in degraded state, the stdio MCP path still works
+			// (D017: optional integration failure does not block the
+			// main flow). Seed a render and confirm the call succeeds.
+			await degradedServer.send("initialize", {
+				protocolVersion: PROTOCOL_VERSION,
+				capabilities: {},
+				clientInfo: CLIENT_INFO,
+			});
+			const okResult = await degradedServer.send("tools/call", {
+				name: "render_mermaid",
+				arguments: { code: "graph TD\n  A-->B" },
+			});
+			expect(okResult.isError).toBeFalsy();
+			expect(JSON.parse(okResult.content[0].text).id).toBeTruthy();
+
+			// 4. The /health storage sub-block is OMITTED (the boot
+			// path falls back to a pure LocalFsStorage with no .health()
+			// method), but the top-level backend/last_oss_failure fields
+			// give the operator the same signal — backend='degraded'
+			// and last_oss_failure carry the env-error payload.
+			expect(health.storage).toBeUndefined();
+		} finally {
+			try { await degradedServer.close(); } catch { /* swallow */ }
+			await rm(degradedDataDir, { recursive: true, force: true });
+		}
 	});
 });

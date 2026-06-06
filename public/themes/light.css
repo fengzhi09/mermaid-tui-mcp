@@ -1,0 +1,25 @@
+/*
+ * Theme: light
+ * Source: GitHub Primer (light) — https://primer.style
+ * Design intent: Default bright surface, near-white canvas with subtle gray
+ *                elevations. Optimized for daytime reading and code review
+ *                workflows. Primary blue (#0969da) matches GitHub link color.
+ *                Amber accent reserved for active state (selected buttons,
+ *                pinned items). Code blocks invert to a dark slate surface so
+ *                monospace text reads with high contrast.
+ * Contrast (computed by .gsd/exec/verify-theme-contrast.mjs):
+ *   text/bg=14.65, text-muted/bg=6.39, code-text/code-bg=12.40 — all pass WCAG AA
+ */
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --surface-2: #eaeef2;
+  --text: #24292f;
+  --text-muted: #57606a;
+  --primary: #0969da;
+  --accent: #f59e0b;
+  --border: #d0d7de;
+  --shadow: rgba(31, 35, 40, 0.04);
+  --code-bg: #24292f;
+  --code-text: #e6edf3;
+}

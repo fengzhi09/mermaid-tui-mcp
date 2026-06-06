@@ -22,8 +22,17 @@ import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-/** The 6 counter keys the /health surface reads. Unknown keys are also
- *  accepted by increment() (forward-compat) but are NOT seeded on load. */
+/** The counter keys the /health surface reads. Unknown keys are also
+ *  accepted by increment() (forward-compat) but are NOT seeded on load.
+ *  M003/S03 key history:
+ *   - T01: oss_init_degraded_count — # of boot-time OssEnvInvalidError
+ *     fallbacks to LocalFsStorage (D017).
+ *   - T03: breaker_trips_count — # of times the OssStorage circuit
+ *     breaker transitioned closed → open (i.e. S3 was unreachable for
+ *     `threshold` consecutive calls). Bumped by DegradableStorage when
+ *     recordFailure returns opened=true. SLO signal for "how flaky is
+ *     OSS": a value > 0 across many restarts is a bucket-credential /
+ *     network / permissions issue, not a 1-shot blip. */
 export const COUNTER_KEYS = [
 	"render_total",
 	"render_errors",
@@ -31,6 +40,8 @@ export const COUNTER_KEYS = [
 	"storage_write_retries",
 	"sweep_runs",
 	"sweep_removed",
+	"oss_init_degraded_count",
+	"breaker_trips_count",
 ];
 
 /** Build a fresh-zero values map. */

@@ -202,11 +202,18 @@ describe("buildStorageFromEnv (S02 T01 + D018)", () => {
 		expect(storage.primary.bucket).toBe("mermaid-bucket");
 		expect(storage.primary.client).toBeTruthy();
 		expect(typeof storage.primary.client.send).toBe("function");
-		// root / health 走 wrapper.
-		expect(storage.root).toBe("mermaid-bucket"); // primary.root by design
+		// M003/S03/T03 决定: root 走 fallback, 让运维在降级时看到"实际数据
+		// 在本地"而不是被 bucket 名误导. 这里没传 dataDir, fallback 的 root
+		// 是空串 (env.MERMAID_RENDERER_DATA 也是空). 原 bucket 名仍可
+		// 通过 health().primary_root 看到.
+		expect(storage.root).toBe("");
+		// health() 走 wrapper, primary_root / fallback_root 双向都暴露.
 		expect(storage.health().degraded).toBe(false);
+		expect(storage.health().breaker_state).toBe("closed");
 		expect(storage.health().consecutive_failures).toBe(0);
 		expect(storage.health().failure_threshold).toBe(3);
+		expect(storage.health().primary_root).toBe("mermaid-bucket");
+		expect(storage.health().fallback_root).toBe("");
 	});
 
 	it("with BACKEND=oss + missing MERMAID_OSS_BUCKET throws OssEnvInvalidError", () => {
@@ -283,5 +290,22 @@ describe("buildStorageFromEnv (S02 T01 + D018)", () => {
 		};
 		const storage = buildStorageFromEnv(env);
 		expect(storage.health().failure_threshold).toBe(7);
+	});
+
+	it("S03/T03: respects MERMAID_DEGRADE_HALF_OPEN_AFTER_MS env var", () => {
+		const env = {
+			MERMAID_RENDERER_BACKEND: "oss",
+			MERMAID_OSS_ENDPOINT: "http://127.0.0.1:9000",
+			MERMAID_OSS_REGION: "us-east-1",
+			MERMAID_OSS_ACCESS_KEY_ID: "AKID_TEST",
+			MERMAID_OSS_SECRET_ACCESS_KEY: "SECRET_TEST",
+			MERMAID_OSS_BUCKET: "mermaid-bucket",
+			MERMAID_DEGRADE_HALF_OPEN_AFTER_MS: "5000",
+		};
+		const storage = buildStorageFromEnv(env);
+		expect(storage.health().half_open_after_ms).toBe(5000);
+		// primary 侧的 OssStorage.breaker 也被覆盖 (wrapper 在 constructor
+		// 里把 halfOpenAfterMs 应用到 primary.breaker.halfOpenAfterMs).
+		expect(storage.primary.breaker.halfOpenAfterMs).toBe(5000);
 	});
 });

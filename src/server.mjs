@@ -24,7 +24,8 @@
 // on every put, and every hour.
 
 import { createServer } from "node:http";
-import { dirname, join, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
@@ -36,7 +37,7 @@ import { buildStorageFromEnv, renderView, extractSvgBody, escapeHtml, fileUrlFor
 import { registerTools } from "./tools.mjs";
 import { Counters } from "./counters.mjs";
 import { tryListen } from "./port-fallback.mjs";
-import { recordError, setLastRenderMs, snapshot as healthSnapshot } from "./health-state.mjs";
+import { recordError, setLastRenderMs, snapshot as healthSnapshot, setBootDegraded, setBootOssFailure } from "./health-state.mjs";
 import { LocalFsStorage } from "./storage/LocalFsStorage.mjs";
 
 export { renderView } from "./helpers.mjs";
@@ -63,9 +64,12 @@ const HTTP_HOST = process.env.MERMAID_RENDERER_HOST || "127.0.0.1";
 // can plug in without re-plumbing server.mjs. "local" (default) uses the
 // on-disk LocalFsStorage; "oss" builds a S3-compatible OssStorage from the
 // MERMAID_OSS_* env vars (T03). On missing/empty required vars the factory
-// throws OssEnvInvalidError; we catch it, emit an `oss_init_failed` log line,
-// and exit(1) so the operator sees a clear boot failure (not a silent
-// 2-second hang followed by a confusing stdio timeout).
+// throws OssEnvInvalidError; M003/S03/T01 routes that to the degraded-boot
+// path (emit `oss_init_degraded` warn-level log, fall back to LocalFsStorage,
+// continue serving MCP) — OSS is an optional integration per D017. The
+// factory itself has already emitted `oss_env_invalid` (level=error) so the
+// operator's log shipper sees the configuration issue even if the boot log
+// is missed.
 // S02 (T01) collapsed the 15-line if/else into a single buildStorageFromEnv
 // call. The helper in src/helpers.mjs is the same factory the migration CLI
 // (bin/migrate-to-oss.mjs) uses — one source of truth for "given an env,
@@ -84,24 +88,57 @@ await counters.load();
 // D017: 可选集成失败不阻塞主流程.OSS env 缺失/无效时降级到 local,记 warn 日志,
 // 继续 boot 走 stdio MCP.R-D018 follow-up: 把 storage.health() 暴露给 /health,
 // 让运维可通过 degraded 字段发现"OSS 配错"而不是误以为 OSS 在工作.
+//
+// M003/S03/T01: 把 boot 路径的 catch 分流 — OssEnvInvalidError 是 optional
+// 集成的配置错(降级 + 计数 + 强 warn),其他初始化错误是真正致命的(仍
+// exit(1),让运维看见). 工厂已在内部发过 `oss_env_invalid` (level=error)
+// 反映"OSS 配置有问题",boot 这里只发 `oss_init_degraded` (level=warn)
+// 反映"我已优雅降级, server 仍可工作".
 let storage;
 try {
 	storage = buildStorageFromEnv(process.env, { dataDir: DATA, counters, logger: log });
 } catch (err) {
-	// Factory 抛 OssEnvInvalidError (MERMAID_OSS_* 缺失) 或其他初始化错误.
-	// 降级到 local,记 level=warn 强警告(含错误详情 + fallback 标记),
-	// server 继续 boot. 任何 future optional 集成都走同一个模式.
-	const errorText = String(err?.message || err);
-	const missingVars = err?.missing;
-	log({
-		level: "warn",
-		event: "oss_init_failed_fallback",
-		error: errorText,
-		missing_env: missingVars,
-		fallback: "local",
-		hint: "OSS env vars missing/invalid; booting with local storage. Fix MERMAID_OSS_* to enable cloud.",
-	});
-	storage = new LocalFsStorage(DATA, { counters, logger: log });
+	if (err && err.name === "OssEnvInvalidError") {
+		// Optional 集成 (OSS) 配置错. 降级到 local, 不退出.
+		const errorText = String(err?.message || err);
+		const missing = Array.isArray(err.missing) ? err.missing : [];
+		// JSON-RPC-family code -32006 mirrors OssEnvInvalidError.code so
+		// downstream log shippers can correlate factory + boot events.
+		log({
+			level: "warn",
+			event: "oss_init_degraded",
+			code: -32006,
+			missing,
+			fallback: "local",
+			hint: "OSS env vars missing/invalid; booting with local storage. Fix MERMAID_OSS_* to enable cloud.",
+		});
+		// Bump the M003 counter so /health surfaces this degraded boot.
+		if (counters) {
+			await counters.increment("oss_init_degraded_count");
+		}
+		// T04 /health extension: record the boot as degraded (so the
+		// /health handler can return `backend: "degraded"` even though
+		// the runtime storage is now a pure LocalFsStorage with no
+		// .health() method to introspect), and record the OSS failure
+		// shape so the top-level `last_oss_failure` field carries the
+		// same info the /health consumer expects. Both calls are
+		// module-level in-memory writes (no I/O), safe in the
+		// boot-time async flow.
+		setBootDegraded(true);
+		setBootOssFailure({ ts: Date.now(), code: -32006, msg: errorText });
+		storage = new LocalFsStorage(DATA, { counters, logger: log });
+	} else {
+		// 非 OssEnvInvalidError = 真正致命的初始化错 (如: 本地 fs 不可写,
+		// 工厂内部崩溃). 退出让运维看到, 不要悄悄降级掩盖问题.
+		const errorText = String(err?.message || err);
+		log({
+			level: "error",
+			event: "oss_init_failed",
+			error: errorText,
+			hint: "Non-OssEnvInvalidError during storage init; aborting boot so the operator sees the failure.",
+		});
+		process.exit(1);
+	}
 }
 await storage.load();
 
@@ -201,6 +238,42 @@ if (httpEnabled) {
 				res.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8" });
 				return res.end(svg);
 			}
+			// M003 S02 T02: static-file route for /themes/* (serves
+			// public/themes/main.css and the 4 individual theme files).
+			// Without this, view.html's <link rel="stylesheet" href="/themes/main.css">
+			// returns 404 and the page renders unstyled. Path is
+			// restricted to public/themes/ to prevent traversal
+			// (e.g. /themes/../../etc/passwd). The theme files are
+			// static — no MIME sniffing, no auth — matching the
+			// S02-PLAN "static css" decision.
+			if (req.method === "GET" && url.pathname.startsWith("/themes/")) {
+				const themesRoot = resolve(join(PUBLIC_DIR, "themes"));
+				const rel = url.pathname.slice("/themes/".length);
+				if (rel.split("/").some((s) => s === "" || s === "." || s === "..")) {
+					throw httpError(400, "invalid path");
+				}
+				const filePath = resolve(join(themesRoot, rel));
+				if (filePath !== themesRoot && !filePath.startsWith(themesRoot + sep)) {
+					throw httpError(403, "forbidden");
+				}
+				let content;
+				try {
+					content = await readFile(filePath);
+				} catch (e) {
+					if (e?.code === "ENOENT") throw httpError(404, "not found");
+					throw e;
+				}
+				const ext = extname(filePath).toLowerCase();
+				const mime =
+					ext === ".css" ? "text/css; charset=utf-8"
+					: ext === ".js" ? "application/javascript; charset=utf-8"
+					: ext === ".svg" ? "image/svg+xml; charset=utf-8"
+					: ext === ".png" ? "image/png"
+					: "application/octet-stream";
+				setCors();
+				res.writeHead(200, { "Content-Type": mime });
+				return res.end(content);
+			}
 			if (req.method === "GET" && url.pathname === "/health") {
 				setCors();
 				// S03 (R009) extension: merge counters.snapshot() and the
@@ -215,8 +288,58 @@ if (httpEnabled) {
 				// The full response is now:
 				//   {status, version, uptimeSec, ttlDays, total, pinned, unpinned,
 				//    counters, last_render_ms, last_errors,
+				//    backend, last_oss_failure,
 				//    storage: { degraded, degraded_reason, consecutive_failures, ... }}
 				const storageHealth = typeof storage.health === "function" ? storage.health() : null;
+				// T04 /health extension — compute the top-level `backend`
+				// and `last_oss_failure` fields. Both follow D017 (OSS is
+				// optional, status surfaces degraded) and rely on the
+				// health-state for boot-degraded tracking because the
+				// boot path falls back to a pure LocalFsStorage (no
+				// .health() to introspect).
+				//
+				// backend resolution priority:
+				//   1. boot-degraded (OssEnvInvalidError at boot)  → "degraded"
+				//      (this is the most important signal — the operator
+				//      expected OSS, got a quiet local fallback)
+				//   2. DegradableStorage with breaker open          → "degraded"
+				//   3. DegradableStorage with breaker closed        → "oss"
+				//   4. plain OssStorage                             → "oss"
+				//   5. plain LocalFsStorage (no OSS configured)     → "local"
+				//
+				// last_oss_failure resolution priority (the /health
+				// consumer wants the FIRST observed OSS failure, which
+				// during a degraded boot is the env-missing one):
+				//   1. boot-time record (set by setBootOssFailure)   → that
+				//   2. DegradableStorage.breaker.lastFailure         → mapped {ts: at, code, msg: message}
+				//   3. plain OssStorage.breaker.lastFailure          → mapped same way
+				//   4. no failure observed yet                       → null
+				const hs = healthSnapshot();
+				let backend;
+				if (hs.boot_degraded) {
+					backend = "degraded";
+				} else if (storageHealth) {
+					backend = storageHealth.degraded ? "degraded" : "oss";
+				} else {
+					// No DegradableStorage wrapper — we still need to
+					// distinguish pure OssStorage ("oss") from pure
+					// LocalFsStorage ("local"). The bucket name is the
+					// only signal we have; the LocalFsStorage.root is a
+					// filesystem path, OssStorage.root is the bucket
+					// string. We duck-type: a root containing "/" or a
+					// drive letter is a filesystem path; otherwise it's
+					// a bucket name.
+					const root = storage.root || "";
+					backend = root && !/[\\/]/.test(root) ? "oss" : "local";
+				}
+				let lastOssFailure = hs.last_oss_failure;
+				if (!lastOssFailure && storageHealth && storageHealth.last_failure) {
+					const lf = storageHealth.last_failure;
+					lastOssFailure = { ts: lf.at, code: lf.code ?? null, msg: lf.message };
+				} else if (!lastOssFailure && typeof storage.breaker === "object" && storage.breaker && storage.breaker.lastFailure) {
+					const lf = storage.breaker.lastFailure;
+					lastOssFailure = { ts: lf.at, code: lf.code ?? null, msg: lf.message };
+				}
 				return json(res, 200, {
 					status: "ok",
 					version: VERSION,
@@ -225,6 +348,8 @@ if (httpEnabled) {
 					...storage.stats(),
 					counters: counters.snapshot(),
 					...healthSnapshot(),
+					backend,
+					last_oss_failure: lastOssFailure,
 					...(storageHealth ? { storage: storageHealth } : {}),
 				});
 			}
