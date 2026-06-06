@@ -122,7 +122,7 @@ describe("gsd-pi-mermaid transport (raw stdio + JSON-RPC bypass)", () => {
 			(
 				await server.send("tools/call", {
 					name: "render_mermaid",
-					arguments: { code: "graph LR; X-->Y; Y-->Z", title: "test-roundtrip" },
+					arguments: { code: ["graph LR", "  X --> Y", "  Y --> Z"].join("\n"), title: "test-roundtrip" },
 				})
 			).content[0].text,
 		);

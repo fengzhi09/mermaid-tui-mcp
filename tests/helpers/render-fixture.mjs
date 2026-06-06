@@ -6,11 +6,15 @@ export const VALID_GRAPH = "graph TD\n  A-->B";
 
 export const VALID_GANTT = "gantt\n  title A\n  dateFormat YYYY-MM-DD\n  section S\n  Task :a1, 2026-01-01, 5d";
 
-// Intentionally invalid: `A-->>B` uses an arrow type that mermaid 11's parser
-// rejects with a clear "Expecting 'AMP', 'COLON'" parse error. (The previous
-// fixture `A -->|label| B` rendered cleanly in mermaid 11, so the test no
-// longer exercised the parse-error path — fixed during T02.)
-export const MALFORMED = "graph TD\n  A-->>B";
+// Intentionally invalid: `graph XYZ` is not a direction the parser accepts
+// (only LR / TD / TB / RL / BT are valid). The mermaid 11 fixture was
+// `graph TD\n  A-->>B` (extra `>`) which mermaid 11 rejected, but
+// beautiful-mermaid's parser is more lenient on arrow shapes and accepts
+// `A-->>B` as a node label. The header check, by contrast, is strict and
+// throws "Invalid mermaid header: 'graph XYZ'. Expected 'graph TD',
+// 'flowchart LR', ..." — which our render() wraps in the
+// "mermaid parse error:" prefix. Fixed during M004.
+export const MALFORMED = "graph XYZ\n  A-->B";
 
 /**
  * Build a string of exactly n ASCII chars. The default (200_001) is one

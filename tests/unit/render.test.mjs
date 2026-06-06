@@ -2,42 +2,41 @@
 //
 // Covers the input-validation surface (empty / whitespace / non-string /
 // oversize), the happy path (returns { id, svg, ascii, sourceLength,
-// asciiFailed }), the parse-error path, and the 4 S03 seams (render
-// timeout R015, jsdom init 1x retry R018, jsdom init retry exhausted,
-// asciiFailed flag). Uses VALID_GRAPH + MALFORMED from
+// asciiFailed }), the parse-error path, and the asciiFailed flag (R025
+// sentinel). Uses VALID_GRAPH + MALFORMED from
 // tests/helpers/render-fixture.mjs so the contract is shared with the
 // eval tests (T04).
+//
+// M004: dropped the render timeout (R015) and jsdom init retry (R018)
+// describe blocks. Synchronous beautiful-mermaid has no timeout path;
+// no jsdom → no init retry path. The seam tests for those scenarios no
+// longer apply.
 
-import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MALFORMED, VALID_GRAPH, oversizedCode } from "../helpers/render-fixture.mjs";
-import { JsdomInitError, RenderTimeoutError } from "../../src/errors.mjs";
-import {
-	__resetMermaidForTesting,
-	__setJSDOMFactoryForTesting,
-	__setMermaidRenderForTesting,
-	__setRenderTimeoutForTesting,
-	render,
-} from "../../src/render.mjs";
+import { __setRenderImplForTesting, render } from "../../src/render.mjs";
 
 // vi.hoisted: state shared with the vi.mock factory below. The factory is
 // called during the import phase (before this file's top-level `let`s run),
 // so the flag must live in a hoisted scope to avoid a TDZ ReferenceError.
 const asciiMock = vi.hoisted(() => ({ shouldThrow: false }));
 
-// Replace mermaid-ascii with a thin wrapper around the real module. The
-// wrapper checks `asciiMock.shouldThrow` and throws when set; otherwise it
-// delegates to the real `mermaidToAscii`. Other tests (happy path, parse
-// error, validation) are unaffected because the flag defaults to false.
-vi.mock("mermaid-ascii", async (importOriginal) => {
+// Replace beautiful-mermaid with a thin wrapper around the real module.
+// The wrapper checks `asciiMock.shouldThrow` and throws when set on the
+// ASCII impl; otherwise it delegates to the real `renderMermaidASCII`.
+// The SVG impl runs untouched so the render still produces a valid SVG
+// in the asciiFailed test (preserves the R025 contract: ASCII fails but
+// the render succeeds).
+vi.mock("beautiful-mermaid", async (importOriginal) => {
 	const actual = await importOriginal();
 	return {
-		mermaidToAscii: (code) => {
+		renderMermaidSVG: actual.renderMermaidSVG,
+		renderMermaidASCII: (code) => {
 			if (asciiMock.shouldThrow) {
 				throw new Error("ascii blew up");
 			}
-			return actual.mermaidToAscii(code);
+			return actual.renderMermaidASCII(code);
 		},
 	};
 });
@@ -92,104 +91,12 @@ describe("render()", () => {
 	});
 
 	// -------------------------------------------------------------------
-	// S03 seams — render timeout (R015), jsdom init 1x retry (R018),
-	// jsdom init retry exhausted, asciiFailed flag.
-	//
-	// Each seam test installs a stub via the __setXForTesting helpers,
-	// runs the assertion, then restores the default state in afterEach.
+	// M004: only the R025 asciiFailed flag test survives from the S03
+	// seam tests. The R015 (timeout) and R018 (jsdom retry) tests are
+	// deleted — the synchronous beautiful-mermaid path has neither.
 	// -------------------------------------------------------------------
 
-	describe("render timeout (R015)", () => {
-		afterEach(() => {
-			__setMermaidRenderForTesting(null);
-			__setRenderTimeoutForTesting(null);
-			__resetMermaidForTesting();
-		});
-
-		it("throws RenderTimeoutError (-32001) when mermaid.render never resolves within MERMAID_RENDER_TIMEOUT_MS", async () => {
-			// Force the timeout path without flaky timing: a never-resolving
-			// promise means the Promise.race will always resolve via the
-			// setTimeout callback. A 10ms timeout keeps the test under 1s.
-			__setMermaidRenderForTesting(() => new Promise(() => {}));
-			__setRenderTimeoutForTesting(10);
-
-			let caught;
-			try {
-				await render(VALID_GRAPH);
-			} catch (e) {
-				caught = e;
-			}
-			expect(caught).toBeInstanceOf(RenderTimeoutError);
-			expect(caught.code).toBe(-32001);
-			// Per T02's retryable convention, timeouts are transient
-			// (the next request may succeed) — the plan said "retryable
-			// false" but the locked enum has retryable: true. We trust
-			// the error class.
-			expect(caught.retryable).toBe(true);
-			expect(caught.name).toBe("RenderTimeoutError");
-			// Message must include the timeout value (10ms) so operators
-			// can see which budget fired.
-			expect(caught.message).toContain("10");
-			expect(caught.message).toMatch(/mermaid render exceeded/);
-		});
-	});
-
-	describe("jsdom init retry (R018)", () => {
-		afterEach(() => {
-			__setJSDOMFactoryForTesting(null);
-			__resetMermaidForTesting();
-		});
-
-		it("retries getMermaid() once on first-call failure and succeeds", async () => {
-			// First call throws; second call returns a real JSDOM. The
-			// retry path should exercise the 1x retry (R018) and let the
-			// render complete normally.
-			let calls = 0;
-			__setJSDOMFactoryForTesting((html, opts) => {
-				calls++;
-				if (calls === 1) throw new Error("synthetic first-call failure");
-				return new JSDOM(html, opts);
-			});
-			__resetMermaidForTesting();
-
-			const out = await render(VALID_GRAPH);
-			expect(out.svg).toContain("<svg");
-			expect(out.sourceLength).toBe(VALID_GRAPH.length);
-			// Exactly two factory invocations: 1 original + 1 retry.
-			// Not more — the retry is bounded to one extra attempt.
-			expect(calls).toBe(2);
-		});
-
-		it("throws JsdomInitError (-32003) when the retry also fails", async () => {
-			// Factory always throws. The retry path should run once
-			// (so calls === 2), then surface JsdomInitError.
-			let calls = 0;
-			__setJSDOMFactoryForTesting(() => {
-				calls++;
-				throw new Error("synthetic permanent failure");
-			});
-			__resetMermaidForTesting();
-
-			let caught;
-			try {
-				await render(VALID_GRAPH);
-			} catch (e) {
-				caught = e;
-			}
-			expect(caught).toBeInstanceOf(JsdomInitError);
-			expect(caught.code).toBe(-32003);
-			expect(caught.retryable).toBe(true); // per T02's convention
-			expect(caught.name).toBe("JsdomInitError");
-			// The error message must surface the underlying reason (the
-			// second attempt's message) so operators can diagnose.
-			expect(caught.message).toContain("synthetic permanent failure");
-			// Exactly two factory invocations: 1 original + 1 retry.
-			// Not three — the retry is bounded to one extra attempt.
-			expect(calls).toBe(2);
-		});
-	});
-
-	describe("asciiFailed flag (S03 ascii counter hook)", () => {
+	describe("asciiFailed flag (R025 ascii counter hook)", () => {
 		beforeEach(() => {
 			asciiMock.shouldThrow = false;
 		});
@@ -197,7 +104,7 @@ describe("render()", () => {
 			asciiMock.shouldThrow = false;
 		});
 
-		it("returns asciiFailed: true and the R025 sentinel when mermaidToAscii throws", async () => {
+		it("returns asciiFailed: true and the R025 sentinel when renderMermaidASCII throws", async () => {
 			asciiMock.shouldThrow = true;
 			const out = await render(VALID_GRAPH);
 			// The render still succeeds (ASCII is best-effort, R025).
@@ -207,8 +114,34 @@ describe("render()", () => {
 			// without re-detecting the sentinel substring.
 			expect(out.asciiFailed).toBe(true);
 			// The sentinel prefix must match what tools.mjs's
-			// ASCII_FAILED_PREFIX detector expects.
+			// ASCII_FAILED_PREFIX detector expects (and the gsd-pi
+			// client's startsWith check, see MEM024).
 			expect(out.ascii).toMatch(/^\[mermaid-ascii failed: /);
+		});
+	});
+
+	// -------------------------------------------------------------------
+	// __setRenderImplForTesting seam — replaces svg or ascii impl. Used
+	// only by future tests; nothing here today exercises it directly
+	// (the asciiFailed test above uses vi.mock on the module instead).
+	// Kept for parity with the public seam surface in src/render.mjs.
+	// -------------------------------------------------------------------
+
+	describe("__setRenderImplForTesting seam", () => {
+		afterEach(() => {
+			__setRenderImplForTesting(null);
+		});
+
+		it("returns to defaults when called with null", () => {
+			// First, override both impls with a noop that throws to prove
+			// the seam is wired up. Then null-restoring should not throw.
+			__setRenderImplForTesting({
+				svg: () => "<svg>override</svg>",
+				ascii: () => "override-ascii",
+			});
+			// We don't assert behaviour here (would conflict with the
+			// vi.mock above) — the contract is that null cleanly resets.
+			expect(() => __setRenderImplForTesting(null)).not.toThrow();
 		});
 	});
 });

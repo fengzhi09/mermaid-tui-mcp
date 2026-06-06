@@ -1,107 +1,39 @@
-// mermaid rendering + ASCII art conversion.
+// src/render.mjs — mermaid rendering via beautiful-mermaid.
 //
-// Initialises the browser-shaped DOM globals mermaid needs (jsdom + getBBox
-// polyfill) once on first use, then caches the parser. Each `render(code)` call
-// produces both the SVG (real diagram, stored on disk for the view page) and an
-// ASCII art fallback that gsd-pi shows in the command box.
+// Synchronous, zero DOM dependencies. beautiful-mermaid's renderMermaidSVG and
+// renderMermaidASCII are both sync — no jsdom, no async, no timeout. Each
+// `render(code)` call produces both the SVG (real diagram, stored on disk for
+// the view page) and an ASCII art fallback that gsd-pi shows in the command
+// box.
+//
+// ASCII is best-effort (R025): an ASCII failure surfaces as the sentinel
+// `[mermaid-ascii failed: <msg>]\n<code>` plus `asciiFailed: true` without
+// failing the whole render. The sentinel prefix is preserved verbatim from
+// the pre-M004 mermaid-ascii@1.0.0 era so external consumers (notably
+// extensions/gsd-pi-mermaid-client's `startsWith("[mermaid-ascii failed:")`
+// detector) keep working without changes.
 
-import { JSDOM } from "jsdom";
-import { mermaidToAscii } from "mermaid-ascii";
+import { renderMermaidSVG, renderMermaidASCII } from "beautiful-mermaid";
 
-import { RenderTimeoutError, JsdomInitError } from "./errors.mjs";
+// --- Test seams (no-ops when not called; live alongside render()) ---
+//
+// Default = real beautiful-mermaid renderers. Tests can replace either via
+// `__setRenderImplForTesting({ svg?, ascii? })`. Pass `null` to restore
+// defaults. The seam is partial — only the fields you supply are replaced,
+// so the asciiFailed test can override only the ASCII impl while letting
+// the real SVG impl run.
+let svgImplOverride = null;
+let asciiImplOverride = null;
 
-// Read the render timeout env var once at module load. Default 10s per R015.
-// Cached in a const so the hot path doesn't re-read process.env on every call.
-// The test seam `__setRenderTimeoutForTesting(ms)` can override this at test
-// time so the timeout test fires in < 1s instead of waiting the full 10s.
-const RENDER_TIMEOUT_MS = (() => {
-	const v = Number(process.env.MERMAID_RENDER_TIMEOUT_MS);
-	return Number.isFinite(v) && v > 0 ? v : 10_000;
-})();
-
-// Mutable for test seams. Default = real JSDOM constructor. The timeout test
-// (see `__setMermaidRenderForTesting` below) does NOT touch this — it only
-// replaces the mermaid.render call. The jsdom retry test replaces this so it
-// can force a first-call failure and exercise the 1x retry path (R018).
-let jsdomFactory = (html, opts) => new JSDOM(html, opts);
-// Mutable for test seam. Default = null → use the real `mermaid.render(id,
-// code)`. When set, the supplied function `(id, code) => Promise<{svg}>` is
-// called instead. The timeout test uses a never-resolving promise to force
-// the Promise.race → timeout path.
-let mermaidRenderImpl = null;
-// Mutable for test seam. Default = null → use the cached RENDER_TIMEOUT_MS.
-// When set to a positive number, that number of ms is used as the timeout.
-let _renderTimeoutMsOverride = null;
-
-let mermaidPromise = null;
-
-function getRenderTimeoutMs() {
-	return _renderTimeoutMsOverride !== null ? _renderTimeoutMsOverride : RENDER_TIMEOUT_MS;
-}
-
-async function initMermaid() {
-	const dom = jsdomFactory("<!DOCTYPE html><html><body></body></html>", {
-		pretendToBeVisual: true,
-		runScripts: "outside-only",
-	});
-	// jsdom does not implement SVGGraphicsElement.getBBox — mermaid 11 needs it.
-	dom.window.SVGElement.prototype.getBBox = () => ({ x: 0, y: 0, width: 100, height: 20 });
-	function setGlobal(key, val) {
-		try {
-			globalThis[key] = val;
-		} catch {
-			Object.defineProperty(globalThis, key, { value: val, writable: true, configurable: true });
-		}
-	}
-	for (const k of [
-		"window",
-		"document",
-		"navigator",
-		"HTMLElement",
-		"SVGElement",
-		"Element",
-		"Node",
-		"NodeList",
-		"getComputedStyle",
-		"CSSStyleSheet",
-		"matchMedia",
-	]) {
-		const v =
-			dom.window[k] ??
-			(k === "matchMedia" ? () => ({ matches: false, addListener() {}, removeListener() {} }) : undefined);
-		if (v !== undefined) setGlobal(k, v);
-	}
-	const mermaid = (await import("mermaid")).default;
-	mermaid.initialize({
-		startOnLoad: false,
-		securityLevel: "loose",
-		theme: "default",
-		fontFamily: "trebuchet ms, verdana, arial, sans-serif",
-	});
-	return mermaid;
-}
-
-async function getMermaid() {
-	if (mermaidPromise) return mermaidPromise;
-	// First attempt. The promise is cached so concurrent callers share it —
-	// a single rejection means all of them see the same failure.
-	mermaidPromise = initMermaid();
-	try {
-		return await mermaidPromise;
-	} catch (firstErr) {
-		// First attempt failed; clear and retry exactly once (R018).
-		mermaidPromise = null;
-		mermaidPromise = initMermaid();
-		try {
-			return await mermaidPromise;
-		} catch (retryErr) {
-			mermaidPromise = null;
-			// Surface the SECOND attempt's message (the one the caller
-			// actually saw) so logs reflect what the retry ran into.
-			const msg = retryErr instanceof Error ? retryErr.message : String(retryErr);
-			throw new JsdomInitError(`jsdom init failed: ${msg}`);
-		}
-	}
+/**
+ * Replace the internal SVG/ASCII renderers for testing. Each field is
+ * optional; pass `null` to clear all overrides.
+ *
+ * @param {{ svg?: (code: string) => string, ascii?: (code: string) => string } | null} opts
+ */
+export function __setRenderImplForTesting(opts) {
+	svgImplOverride = opts && typeof opts.svg === "function" ? opts.svg : null;
+	asciiImplOverride = opts && typeof opts.ascii === "function" ? opts.ascii : null;
 }
 
 let idCounter = 0;
@@ -112,6 +44,7 @@ function nextId() {
 
 /**
  * Render a mermaid source string.
+ *
  * @param {string} code
  * @returns {Promise<{id: string, svg: string, ascii: string, sourceLength: number, asciiFailed: boolean}>}
  */
@@ -122,101 +55,36 @@ export async function render(code) {
 	if (code.length > 200_000) {
 		throw new Error(`mermaid source too long (${code.length} chars, max 200000)`);
 	}
-	const mermaid = await getMermaid();
-	const id = nextId();
+
+	// SVG step. Errors here are fatal (the caller needs the SVG to embed
+	// in the HTML viewer). The message is wrapped in the "mermaid parse
+	// error:" prefix so src/errors.mjs:classifyDomainError maps it to
+	// -32002 RenderFailed (retryable: false) per the inner-payload
+	// contract — the 9 existing eval tests' substring assertions on
+	// /^mermaid parse error:/ keep working.
 	let svg;
 	try {
-		const timeoutMs = getRenderTimeoutMs();
-		let timer;
-		const timeoutPromise = new Promise((_, reject) => {
-			timer = setTimeout(
-				() => reject(new RenderTimeoutError(`mermaid render exceeded ${timeoutMs}ms`)),
-				timeoutMs,
-			);
-		});
-		const renderPromise = mermaidRenderImpl
-			? mermaidRenderImpl(id, code)
-			: mermaid.render(id, code);
-		try {
-			const out = await Promise.race([renderPromise, timeoutPromise]);
-			clearTimeout(timer);
-			svg = out.svg;
-		} catch (e) {
-			// Clear the timer in both branches: on success it's a no-op
-			// (timer already cleared), on failure it prevents the setTimeout
-			// callback from firing after we've already given up.
-			clearTimeout(timer);
-			throw e;
-		}
+		svg = svgImplOverride ? svgImplOverride(code) : renderMermaidSVG(code);
 	} catch (e) {
-		// RenderTimeoutError passes through unchanged so callers (and
-		// classifyDomainError in src/errors.mjs) can read the -32001 code
-		// straight off the .code property. Every other error gets the
-		// historical "mermaid parse error:" prefix so the 9 existing
-		// eval tests' substring assertions and the -32002 mapping
-		// (classifyDomainError) keep working.
-		if (e && typeof e === "object" && e.name === "RenderTimeoutError") {
-			throw e;
-		}
 		const msg = e instanceof Error ? e.message : String(e);
 		throw new Error(`mermaid parse error: ${msg.slice(0, 500)}`);
 	}
+
+	// ASCII step. Best-effort per R025: a failure here MUST NOT abort
+	// the render. The sentinel preserves the historical format
+	// (`[mermaid-ascii failed: <msg>]\n<code>`, closing `]`, NOT `)`)
+	// so the existing ASCII_FAILED_PREFIX detector in src/tools.mjs and
+	// the startsWith assertion in extensions/gsd-pi-mermaid-client's
+	// tests both keep working unchanged.
 	let ascii;
 	let asciiFailed = false;
 	try {
-		ascii = mermaidToAscii(code);
+		ascii = asciiImplOverride ? asciiImplOverride(code) : renderMermaidASCII(code);
 	} catch (e) {
-		// ASCII is best-effort; never fail the whole render because of it
-		// (R025). Surface the failure as the sentinel + a boolean so
-		// tools.mjs (T05) can increment the ascii_failures counter without
-		// re-detecting the sentinel substring.
 		asciiFailed = true;
 		const msg = e instanceof Error ? e.message : String(e);
 		ascii = `[mermaid-ascii failed: ${msg}]\n${code}`;
 	}
-	return { id, svg, ascii, sourceLength: code.length, asciiFailed };
-}
 
-// --- Test seams (no-ops when not called; live alongside render()) ---
-
-/**
- * Replace the internal mermaid.render call. The supplied function takes
- * `(id, code)` and returns a `Promise<{svg: string}>`. Pass `null` to
- * restore the real `mermaid.render(id, code)`. Used by the timeout test
- * (pass a never-resolving promise to force the timeout path) and
- * reserved for future tests.
- */
-export function __setMermaidRenderForTesting(fn) {
-	mermaidRenderImpl = typeof fn === "function" ? fn : null;
-}
-
-/**
- * Replace the internal JSDOM factory. The supplied function takes
- * `(html, opts)` and returns a JSDOM instance. Pass `null` to restore
- * the real `new JSDOM(html, opts)`. Used by the jsdom retry test (throw
- * on first call, return a valid JSDOM on second call to exercise the
- * R018 1x retry path).
- */
-export function __setJSDOMFactoryForTesting(fn) {
-	jsdomFactory =
-		typeof fn === "function" ? fn : (html, opts) => new JSDOM(html, opts);
-}
-
-/**
- * Clear the cached mermaid init promise so the next getMermaid() call
- * re-runs initMermaid (using whatever factory is currently installed).
- * Used by the jsdom retry test to start from a clean cache.
- */
-export function __resetMermaidForTesting() {
-	mermaidPromise = null;
-}
-
-/**
- * Override the cached render timeout for tests. The production path
- * reads MERMAID_RENDER_TIMEOUT_MS once at module load; this seam lets
- * the timeout test force a short timeout (< 1s) without waiting the
- * full default 10s. Pass `null` to restore the cached value.
- */
-export function __setRenderTimeoutForTesting(ms) {
-	_renderTimeoutMsOverride = typeof ms === "number" && ms > 0 ? ms : null;
+	return { id: nextId(), svg, ascii, sourceLength: code.length, asciiFailed };
 }
