@@ -312,7 +312,7 @@ export async function runMigration(opts = {}) {
 		// here so the post-migration stats() are identical to
 		// the pre-migration stats() (modulo the expired-and-
 		// unpinned entry that the source's sweep dropped).
-		const newEntry = await target.put(id, entry.code, svg, entry.sourceLength, entry.title);
+		const newEntry = await target.put(id, entry.code, svg, entry.ascii ?? "", entry.sourceLength, entry.title);
 		newEntry.createdAt = entry.createdAt;
 		newEntry.lastAccessedAt = entry.lastAccessedAt;
 		newEntry.pinned = !!entry.pinned;

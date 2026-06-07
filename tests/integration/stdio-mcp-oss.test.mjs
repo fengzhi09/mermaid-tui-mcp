@@ -349,7 +349,9 @@ describe.skipIf(!SUITE_SHOULD_RUN)("stdio MCP integration — oss backend (M002/
 		expect(body.title).toBe(title);
 		expect(body.code).toBe(VALID_GRAPH);
 		expect(typeof body.ascii).toBe("string");
-		expect(body.ascii).toBe(""); // ASCII not re-rendered on read (LocalFsStorage parity)
+		/* S03 ASCII-on-disk: get_diagram now returns the original render's ASCII (was ""). */
+		expect(typeof body.ascii).toBe("string");
+		expect(body.ascii.length).toBeGreaterThan(0); // ASCII not re-rendered on read (LocalFsStorage parity)
 		expect(typeof body.svg).toBe("string");
 		expect(body.svg).toContain("<svg");
 		expect(typeof body.createdAt).toBe("number");

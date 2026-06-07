@@ -140,7 +140,7 @@ describe("LocalFsStorage", () => {
 			const svg = "<svg>body</svg>";
 			const sourceLength = code.length;
 			const t0 = Date.now();
-			await ctx.storage.put(id, code, svg, sourceLength);
+			await ctx.storage.put(id, code, svg, "", sourceLength);
 
 			const entry = ctx.storage.store.get(id);
 			expect(entry).toBeDefined();
@@ -174,7 +174,7 @@ describe("LocalFsStorage", () => {
 		it("pruneIfExpired bumps lastAccessedAt (S01 locked behaviour, used by HTTP /view + /raw/svg)", async () => {
 			ctx = await makeTempStorage();
 			const id = "mPruneBump";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 			const tBefore = ctx.storage.store.get(id).lastAccessedAt;
 			await new Promise((r) => setTimeout(r, 5));
 			const got = await ctx.storage.pruneIfExpired(id);
@@ -186,7 +186,7 @@ describe("LocalFsStorage", () => {
 			ctx = await makeTempStorage();
 			const id = "mNoSrc";
 			const code = "graph TD\n  A-->B";
-			await ctx.storage.put(id, code, "<svg/>", undefined);
+			await ctx.storage.put(id, code, "<svg/>", "", "", undefined);
 			expect(ctx.storage.store.get(id).sourceLength).toBe(code.length);
 		});
 	});
@@ -194,7 +194,7 @@ describe("LocalFsStorage", () => {
 	describe("has()", () => {
 		it("returns true for stored ids and false otherwise", async () => {
 			ctx = await makeTempStorage();
-			await ctx.storage.put("m1", "g", "<svg></svg>", 1);
+			await ctx.storage.put("m1", "g", "<svg></svg>", "", 1);
 			expect(ctx.storage.has("m1")).toBe(true);
 			expect(ctx.storage.has("m404")).toBe(false);
 		});
@@ -205,7 +205,7 @@ describe("LocalFsStorage", () => {
 			ctx = await makeTempStorage();
 			const id = "mSvg1";
 			const svg = "<svg>body</svg>";
-			await ctx.storage.put(id, "graph TD\n  A-->B", svg, 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", svg, "", 13);
 			expect(await ctx.storage.readSvg(id)).toBe(svg);
 			expect(await ctx.storage.readSvg("nope")).toBeNull();
 		});
@@ -215,7 +215,7 @@ describe("LocalFsStorage", () => {
 		it("flips the pinned flag and returns true for existing ids, false for missing", async () => {
 			ctx = await makeTempStorage();
 			const id = "mPin1";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 			expect(ctx.storage.store.get(id).pinned).toBe(false);
 			expect(await ctx.storage.setPinned(id, true)).toBe(true);
 			expect(ctx.storage.store.get(id).pinned).toBe(true);
@@ -229,7 +229,7 @@ describe("LocalFsStorage", () => {
 		it("returns the entry and updates lastAccessedAt for an unexpired id", async () => {
 			ctx = await makeTempStorage();
 			const id = "mPruneLive";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 			const tBefore = ctx.storage.store.get(id).lastAccessedAt;
 			await new Promise((r) => setTimeout(r, 5));
 			const got = await ctx.storage.pruneIfExpired(id);
@@ -242,7 +242,7 @@ describe("LocalFsStorage", () => {
 		it("returns null and removes the entry + blob for an expired non-pinned id", async () => {
 			ctx = await makeTempStorage();
 			const id = "mPruneExpired";
-			await ctx.storage.put(id, "g", "<svg></svg>", 1);
+			await ctx.storage.put(id, "g", "<svg></svg>", "", 1);
 			await writeFile(join(ctx.root, "blobs", `${id}.svg`), "<svg></svg>", "utf-8");
 			// backdate the entry past TTL
 			ctx.storage.store.get(id).createdAt = Date.now() - TTL_MS - 1000;
@@ -257,7 +257,7 @@ describe("LocalFsStorage", () => {
 		it("returns the entry for an expired PINNED id (no sweep)", async () => {
 			ctx = await makeTempStorage();
 			const id = "mPrunePinned";
-			await ctx.storage.put(id, "g", "<svg></svg>", 1);
+			await ctx.storage.put(id, "g", "<svg></svg>", "", 1);
 			await writeFile(join(ctx.root, "blobs", `${id}.svg`), "<svg></svg>", "utf-8");
 			ctx.storage.store.get(id).createdAt = Date.now() - TTL_MS - 1000;
 			ctx.storage.store.get(id).pinned = true;
@@ -308,7 +308,7 @@ describe("LocalFsStorage", () => {
 
 		it("returns 0 and does not call save() when nothing is expired", async () => {
 			ctx = await makeTempStorage();
-			await ctx.storage.put("mFresh", "g", "<svg></svg>", 1);
+			await ctx.storage.put("mFresh", "g", "<svg></svg>", "", 1);
 			const removed = await ctx.storage.sweep();
 			expect(removed).toBe(0);
 			expect(ctx.storage.has("mFresh")).toBe(true);
@@ -318,9 +318,9 @@ describe("LocalFsStorage", () => {
 	describe("stats()", () => {
 		it("counts pinned vs unpinned correctly", async () => {
 			ctx = await makeTempStorage();
-			await ctx.storage.put("a", "g", "<svg></svg>", 1);
-			await ctx.storage.put("b", "g", "<svg></svg>", 1);
-			await ctx.storage.put("c", "g", "<svg></svg>", 1);
+			await ctx.storage.put("a", "g", "<svg></svg>", "", 1);
+			await ctx.storage.put("b", "g", "<svg></svg>", "", 1);
+			await ctx.storage.put("c", "g", "<svg></svg>", "", 1);
 			await ctx.storage.setPinned("a", true);
 			await ctx.storage.setPinned("b", true);
 			const s = ctx.storage.stats();
@@ -338,7 +338,7 @@ describe("LocalFsStorage", () => {
 
 			vi.useFakeTimers();
 			vi.setSystemTime(T);
-			await ctx.storage.put(id, "g", "<svg></svg>", 1);
+			await ctx.storage.put(id, "g", "<svg></svg>", "", 1);
 
 			// advance exactly TTL_MS — boundary is still valid (now - createdAt === TTL_MS, not >)
 			vi.setSystemTime(T + TTL_MS);
@@ -359,7 +359,7 @@ describe("LocalFsStorage", () => {
 		it("persists the title in the entry", async () => {
 			ctx = await makeTempStorage();
 			const id = "mWithTitle";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13, "Auth flow");
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13, "Auth flow");
 			const entry = ctx.storage.store.get(id);
 			expect(entry.title).toBe("Auth flow");
 		});
@@ -367,7 +367,7 @@ describe("LocalFsStorage", () => {
 		it("defaults title to \"\" when the title arg is omitted", async () => {
 			ctx = await makeTempStorage();
 			const id = "mNoTitle";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 			expect(ctx.storage.store.get(id).title).toBe("");
 		});
 	});
@@ -376,7 +376,7 @@ describe("LocalFsStorage", () => {
 		it("returns the entry without bumping lastAccessedAt", async () => {
 			ctx = await makeTempStorage();
 			const id = "mMetaNoBump";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 			const tBefore = ctx.storage.store.get(id).lastAccessedAt;
 			await new Promise((r) => setTimeout(r, 5));
 			const meta = ctx.storage.getMetadata(id);
@@ -395,7 +395,7 @@ describe("LocalFsStorage", () => {
 		it("removes the entry AND the <id>.svg blob, and returns true", async () => {
 			ctx = await makeTempStorage();
 			const id = "mRemove1";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 			const blobPath = join(ctx.root, "blobs", `${id}.svg`);
 			expect(existsSync(blobPath)).toBe(true);
 			expect(ctx.storage.has(id)).toBe(true);
@@ -418,7 +418,7 @@ describe("LocalFsStorage", () => {
 		it("works on a PINNED entry (the pin flag does not block explicit delete)", async () => {
 			ctx = await makeTempStorage();
 			const id = "mRemovePinned";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 			await ctx.storage.setPinned(id, true);
 			expect(ctx.storage.store.get(id).pinned).toBe(true);
 			expect(await ctx.storage.remove(id)).toBe(true);
@@ -428,7 +428,7 @@ describe("LocalFsStorage", () => {
 		it("is idempotent: a second remove returns false", async () => {
 			ctx = await makeTempStorage();
 			const id = "mRemoveIdem";
-			await ctx.storage.put(id, "g", "<svg></svg>", 1);
+			await ctx.storage.put(id, "g", "<svg></svg>", "", 1);
 			expect(await ctx.storage.remove(id)).toBe(true);
 			expect(await ctx.storage.remove(id)).toBe(false);
 		});
@@ -679,7 +679,7 @@ describe("LocalFsStorage", () => {
 				});
 
 				const id = "mEagain1";
-				await storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+				await storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 
 				// The blob write is the first writeFile call → EAGAIN, then
 				// retry → real write. The save() then writes store.json.tmp
@@ -717,7 +717,7 @@ describe("LocalFsStorage", () => {
 
 				let caught;
 				try {
-					await storage.put("mEnospc", "graph TD\n  A-->B", "<svg></svg>", 13);
+					await storage.put("mEnospc", "graph TD\n  A-->B", "<svg></svg>", "", 13);
 				} catch (e) {
 					caught = e;
 				}
@@ -757,7 +757,7 @@ describe("LocalFsStorage", () => {
 					return await writeFile(path, content, "utf-8");
 				});
 
-				await storage.put("mEwould", "g", "<svg></svg>", 1);
+				await storage.put("mEwould", "g", "<svg></svg>", "", 1);
 				expect(counters.snapshot().storage_write_retries).toBe(1);
 				expect(existsSync(join(root, "blobs", "mEwould.svg"))).toBe(true);
 			} finally {
@@ -783,7 +783,7 @@ describe("LocalFsStorage", () => {
 
 				let caught;
 				try {
-					await storage.put("mEacces", "g", "<svg></svg>", 1);
+					await storage.put("mEacces", "g", "<svg></svg>", "", 1);
 				} catch (e) {
 					caught = e;
 				}
@@ -802,7 +802,7 @@ describe("LocalFsStorage", () => {
 		it("throws StorageReadError (-32005, retryable: true) when readFile never resolves within the timeout", async () => {
 			ctx = await makeTempStorage();
 			const id = "mReadTimeout";
-			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", "<svg></svg>", "", 13);
 
 			// Replace readFile with a never-resolving promise so the
 			// Promise.race resolves via the timeout branch. 50ms keeps the
@@ -830,7 +830,7 @@ describe("LocalFsStorage", () => {
 			ctx = await makeTempStorage();
 			const id = "mReadOk";
 			const svg = "<svg>body</svg>";
-			await ctx.storage.put(id, "graph TD\n  A-->B", svg, 13);
+			await ctx.storage.put(id, "graph TD\n  A-->B", svg, "", 13);
 			// Default seams + default 5000ms timeout — read completes well
 			// under that budget.
 			expect(await ctx.storage.readSvg(id)).toBe(svg);
@@ -898,7 +898,7 @@ describe("LocalFsStorage", () => {
 				const storage = new LocalFsStorage(root, { counters });
 				await storage.load();
 				// Add a fresh, unexpired entry.
-				await storage.put("mFreshSweep", "g", "<svg></svg>", 1);
+				await storage.put("mFreshSweep", "g", "<svg></svg>", "", 1);
 				const removedBefore = counters.snapshot().sweep_removed;
 				const r = await storage.sweep();
 				expect(r).toBe(0);

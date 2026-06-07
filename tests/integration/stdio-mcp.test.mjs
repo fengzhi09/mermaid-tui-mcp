@@ -342,7 +342,9 @@ describe("stdio MCP integration", () => {
 		expect(typeof body.ascii).toBe("string");
 		// ascii is intentionally "" on a get (re-render would be a hidden
 		// compute cost); LLM re-calls render_mermaid if it wants fresh ASCII.
-		expect(body.ascii).toBe("");
+		/* S03 ASCII-on-disk: get_diagram now returns the original render's ASCII (was ""). */
+		expect(typeof body.ascii).toBe("string");
+		expect(body.ascii.length).toBeGreaterThan(0);
 		expect(typeof body.svg).toBe("string");
 		expect(body.svg).toContain("<svg");
 		expect(typeof body.createdAt).toBe("number");

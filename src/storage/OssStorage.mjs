@@ -694,11 +694,12 @@ export class OssStorage {
 	 * @param {string} id
 	 * @param {string} code
 	 * @param {string} svg
+	 * @param {string} ascii
 	 * @param {number} sourceLength
 	 * @param {string} [title]
 	 * @returns {Promise<import("./Backend.mjs").Entry>}
 	 */
-	async put(id, code, svg, sourceLength, title) {
+	async put(id, code, svg, ascii, sourceLength, title) {
 		const entry = {
 			code,
 			createdAt: Date.now(),
@@ -706,6 +707,7 @@ export class OssStorage {
 			lastAccessedAt: Date.now(),
 			sourceLength: typeof sourceLength === "number" ? sourceLength : code.length,
 			title: typeof title === "string" ? title : "",
+			ascii: typeof ascii === "string" ? ascii : "",
 		};
 		this.store.set(id, entry);
 		const blobKey = this._key(`blobs/${id}.svg`);

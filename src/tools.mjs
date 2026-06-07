@@ -157,14 +157,14 @@ function maybeAsciiWarning(ascii) {
 export async function renderMermaid(args, ctx) {
 	const { code, title } = args;
 	const { id, svg, ascii, sourceLength } = await ctx.render(code);
-	await ctx.storage.put(id, code, svg, sourceLength, title);
+	await ctx.storage.put(id, code, svg, ascii, sourceLength, title);
 	const entry = ctx.storage.getMetadata(id);
 	if (!entry) {
 		// put succeeded but the entry vanished — defensive. In practice this
 		// is impossible (put is synchronous in memory after the disk write).
 		throw new StorageWriteError(`put succeeded but entry vanished for ${id}`);
 	}
-	const html = await ctx.renderView(id, entry, svg);
+	const html = await ctx.renderView(id, entry, svg, ascii);
 	const htmlPath = join(ctx.dataDir, "blobs", `${id}.html`);
 	await writeFile(htmlPath, html, "utf-8");
 	const warnings = maybeAsciiWarning(ascii);
@@ -229,9 +229,12 @@ export async function getDiagram(args, ctx) {
 		id: args.id,
 		title: entry.title ?? "",
 		code: entry.code,
-		ascii: "", // ASCII is intentionally not re-rendered on read; the tool
-		//           contract returns what the original render produced. The
-		//           caller can re-call render_mermaid if they want fresh ASCII.
+		ascii: entry.ascii ?? "", // Stored at put() time so the original
+		// ASCII (with the same sentinel / shape the
+		// original render_mermaid call returned) is
+		// preserved across reads. Re-render only when
+		// the caller wants fresh ASCII; we never
+		// recompute on read.
 		svg: svg ?? "",
 		createdAt: entry.createdAt,
 		lastAccessedAt: entry.lastAccessedAt,

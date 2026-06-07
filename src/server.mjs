@@ -214,7 +214,7 @@ if (httpEnabled) {
 				if (!entry) throw httpError(404, "not found or expired");
 				const svg = await storage.readSvg(id);
 				if (!svg) throw httpError(404, "svg blob missing");
-				const html = await renderView(id, entry, svg, /*withPinButton=*/true);
+				const html = await renderView(id, entry, svg, "", /*withPinButton=*/true);
 				res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
 				return res.end(html);
 			}

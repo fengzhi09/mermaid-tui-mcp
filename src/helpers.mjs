@@ -26,7 +26,15 @@ import { DegradableStorage as _DegradableStorage } from "./storage/DegradableSto
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(resolve(__dirname, ".."), "public");
 
-export async function renderView(id, entry, svg, withPinButton = false) {
+export async function renderView(id, entry, svg, ascii = "", withPinButton = false) {
+	// Defensive: pre-existing call sites (tests/unit/server-helpers.test.mjs
+	// and src/server.mjs) used to pass `withPinButton` as the 4th argument
+	// (a boolean). When the SVG viewBox support landed, `ascii` was
+	// inserted at the 4th position; the 4-arg form then forwarded the
+	// boolean to `ascii`. Coerce non-strings to "" so escapeHtml() never
+	// sees a non-string and the old call sites still render an empty
+	// ASCII block instead of throwing.
+	if (typeof ascii !== "string") ascii = "";
 	const tmpl = await readFile(join(PUBLIC_DIR, "view.html"), "utf-8");
 	return tmpl
 		.replace(/\{\{ID\}\}/g, escapeHtml(id))
@@ -35,7 +43,9 @@ export async function renderView(id, entry, svg, withPinButton = false) {
 		.replace(/\{\{PINNED\}\}/g, entry.pinned ? "true" : "false")
 		.replace(/\{\{SOURCE_LENGTH\}\}/g, String(entry.sourceLength ?? entry.code.length))
 		.replace(/\{\{SVG_BODY\}\}/g, extractSvgBody(svg))
+		.replace(/\{\{SVG_VIEWBOX\}\}/g, escapeHtml(extractSvgViewBox(svg)))
 		.replace(/\{\{CODE\}\}/g, escapeHtml(entry.code))
+		.replace(/\{\{ASCII\}\}/g, escapeHtml(ascii ?? ""))
 		.replace(/\{\{WITH_PIN\}\}/g, withPinButton ? "true" : "false")
 		.replace(/\{\{TITLE\}\}/g, entry.title ? escapeHtml(entry.title) : "")
 		.replace(/\{\{TITLE_JSON\}\}/g, JSON.stringify(entry.title ?? ""));
@@ -44,6 +54,32 @@ export async function renderView(id, entry, svg, withPinButton = false) {
 export function extractSvgBody(svg) {
 	const m = svg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/);
 	return m ? m[1] : "";
+}
+
+/**
+ * Extract the outer `<svg>` element's `viewBox` attribute value (e.g.
+ * "0 0 100 50"). Returns "" when the svg has no outer <svg> tag or
+ * the tag carries no viewBox — the caller (renderView) substitutes the
+ * empty string into the view.html template, which is what the previous
+ * bug shipped (viewBox="" on the outer container, browsers defaulted
+ * to 0 0 300 150 and the diagram overflowed/clipped).
+ *
+ * Only `viewBox` is plumbed through. width / height are intentionally
+ * NOT — the view.html outer container relies on its CSS sizing and
+ * the SVG's intrinsic ratio (preserved by viewBox). Forwarding the
+ * mermaid renderer’s pixel width/height would lock the diagram to a
+ * fixed size and break the viewer’s zoom/pan math.
+ *
+ * @param {string} svg
+ * @returns {string}
+ */
+export function extractSvgViewBox(svg) {
+	const m = svg.match(/<svg([^>]*)>/);
+	if (!m) return "";
+	const attrs = m[1];
+	const vbMatch = attrs.match(/\sviewBox\s*=\s*("([^"]*)"|'([^']*)')/);
+	if (!vbMatch) return "";
+	return vbMatch[2] ?? vbMatch[3] ?? "";
 }
 
 export function escapeHtml(s) {

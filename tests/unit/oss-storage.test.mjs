@@ -306,7 +306,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 			const id = "mLife1";
 			const code = "graph TD\n  A-->B";
 			const svg = "<svg>body</svg>";
-			await ctx.storage.put(id, code, svg, code.length, "Lifecycle flow");
+			await ctx.storage.put(id, code, svg, "", code.length, "Lifecycle flow");
 
 			// Blob is in the S3 stub's blob namespace.
 			expect(ctx.client.blobs.get("blobs/mLife1.svg")).toBe(svg);
@@ -701,7 +701,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 
 			let caught;
 			try {
-				await ctx.storage.put("mPutFail", "g", "<svg/>", 1);
+				await ctx.storage.put("mPutFail", "g", "<svg/>", "", 1);
 			} catch (e) {
 				caught = e;
 			}
@@ -730,7 +730,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 				return origSend(command);
 			};
 
-			const entry = await ctx.storage.put("mRetry", "g", "<svg/>", 1);
+			const entry = await ctx.storage.put("mRetry", "g", "<svg/>", "", 1);
 			expect(entry).toBeDefined();
 			expect(putCalls).toBeGreaterThanOrEqual(2);
 			expect(ctx.client.blobs.get("blobs/mRetry.svg")).toBe("<svg/>");
@@ -756,7 +756,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 
 			let caught;
 			try {
-				await ctx.storage.put("mTimeoutFail", "g", "<svg/>", 1);
+				await ctx.storage.put("mTimeoutFail", "g", "<svg/>", "", 1);
 			} catch (e) {
 				caught = e;
 			}
@@ -840,7 +840,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 		it("writes store.json and blobs under the configured prefix", async () => {
 			ctx = makeStorage({ prefix: "team-a/renders" });
 			await ctx.storage.load();
-			await ctx.storage.put("mPre", "g", "<svg/>", 1);
+			await ctx.storage.put("mPre", "g", "<svg/>", "", 1);
 
 			expect(ctx.client.blobs.has("team-a/renders/blobs/mPre.svg")).toBe(true);
 			expect(ctx.client.store.has("team-a/renders/store.json")).toBe(true);
@@ -924,7 +924,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 			ctx = makeStorage();
 			await ctx.storage.load();
 			const code = "graph TD\n  A-->B";
-			await ctx.storage.put("mNoSrc", code, "<svg/>", undefined);
+			await ctx.storage.put("mNoSrc", code, "<svg/>", "", "", undefined);
 			expect(ctx.storage.store.get("mNoSrc").sourceLength).toBe(code.length);
 		});
 	});
@@ -950,7 +950,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 			const logSpy = vi.fn();
 			ctx = makeStorage({ logger: { log: logSpy } });
 			await ctx.storage.load();
-			await ctx.storage.put("mLog", "g", "<svg/>", 1);
+			await ctx.storage.put("mLog", "g", "<svg/>", "", 1);
 			await ctx.storage.readSvg("mLog");
 			await ctx.storage.remove("mLog");
 
@@ -973,7 +973,7 @@ describe("OssStorage — T02 full StorageBackend", () => {
 		it("does NOT log when no logger is attached (silent operation)", async () => {
 			ctx = makeStorage({ logger: null });
 			await ctx.storage.load();
-			await ctx.storage.put("mNoLog", "g", "<svg/>", 1);
+			await ctx.storage.put("mNoLog", "g", "<svg/>", "", 1);
 			// No throw, no spy — the call is silent. We just assert
 			// the operation completed.
 			expect(ctx.storage.has("mNoLog")).toBe(true);

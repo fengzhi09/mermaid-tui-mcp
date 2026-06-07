@@ -212,8 +212,8 @@ export class DegradableStorage {
 		return this._tryAsync("sweep", []);
 	}
 
-	async put(id, code, svg, sourceLength, title) {
-		return this._tryAsync("put", [id, code, svg, sourceLength, title]);
+	async put(id, code, svg, ascii, sourceLength, title) {
+		return this._tryAsync("put", [id, code, svg, ascii, sourceLength, title]);
 	}
 
 	async readSvg(id) {

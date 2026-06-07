@@ -27,6 +27,11 @@
  * @property {number} lastAccessedAt  Epoch ms of the last read (bumped by pruneIfExpired only).
  * @property {number} sourceLength    Length of the source (may differ from code.length for trimmed input).
  * @property {string} [title]         Optional human label. Defaults to "" for v0.1.0 store.json entries.
+ * @property {string} [ascii]         ASCII-art rendering for terminal display. Defaults to "" for v0.x store.json
+ *                                    entries (legacy blobs written before the ASCII-on-disk change have no `ascii`
+ *                                    field; the viewer gracefully degrades to an empty <pre>). New put() calls MUST
+ *                                    pass the rendered ASCII so the HTML viewer (public/view.html) and get_diagram
+ *                                    tool both surface the same string render_mermaid returned.
  */
 
 /**
@@ -71,8 +76,10 @@
  * @property {() => Promise<void>} save
  *   Persists the in-memory index to durable storage. Idempotent.
  *
- * @property {(id: string, code: string, svg: string, sourceLength: number, title?: string) => Promise<Entry>} put
- *   Stores code, writes the blob, persists. When `title` is omitted, entry.title is set to "".
+ * @property {(id: string, code: string, svg: string, ascii: string, sourceLength: number, title?: string) => Promise<Entry>} put
+ *   Stores code, writes the blob, persists. `ascii` is the terminal-safe text rendering produced alongside the SVG;
+ *   it is persisted so the HTML viewer can show it and so get_diagram returns the same string the original render did.
+ *   When `title` is omitted, entry.title is set to "". `ascii` is required (pass "" if you genuinely have no ASCII).
  *
  * @property {(id: string) => (Entry|null)} getMetadata
  *   Returns the entry without mutating lastAccessedAt. The 4 tools that take {id}

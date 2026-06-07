@@ -31,9 +31,10 @@
   <div class="meta-line">drag to pan, scroll to zoom, double-click to reset</div>
   <div class="stage-wrap">
     <div class="stage pannable" id="stage">
-      <svg id="mermaid-svg" xmlns="http://www.w3.org/2000/svg" viewBox="">{{SVG_BODY}}</svg>
+      <svg id="mermaid-svg" xmlns="http://www.w3.org/2000/svg" viewBox="{{SVG_VIEWBOX}}">{{SVG_BODY}}</svg>
     </div>
   </div>
+  <pre class="ascii-block" id="ascii" aria-label="ASCII rendering">{{ASCII}}</pre>
   <pre class="code-block" id="code">{{CODE}}</pre>
 
   <div class="zoom-controls">

@@ -58,7 +58,7 @@ function makeStubTarget() {
 		puts,
 		get saves() { return saves; },
 		has(id) { return store.has(id); },
-		async put(id, code, svg, sourceLength, title) {
+		async put(id, code, svg, ascii, sourceLength, title) {
 			const entry = {
 				code,
 				createdAt: Date.now(),
@@ -66,9 +66,10 @@ function makeStubTarget() {
 				lastAccessedAt: Date.now(),
 				sourceLength: typeof sourceLength === "number" ? sourceLength : code.length,
 				title: typeof title === "string" ? title : "",
+				ascii: typeof ascii === "string" ? ascii : "",
 			};
 			store.set(id, entry);
-			puts.push({ id, code, svg, sourceLength, title });
+			puts.push({ id, code, svg, ascii, sourceLength, title });
 			return entry;
 		},
 		async save() { /* no-op for the stub */ },
@@ -328,7 +329,7 @@ describe("migrate-to-oss (S02 T02)", () => {
 	it("migrate-to-oss with target.has(id) === true emits migrate_skip event", async () => {
 		const fixture = await makeLocalFixture(tmpRoot);
 		const target = makeStubTarget();
-		await target.put("fresh-pinned-0", "ORIGINAL", "<svg>original</svg>", 999, "ORIGINAL");
+		await target.put("fresh-pinned-0", "ORIGINAL", "<svg>original</svg>", "", 999, "ORIGINAL");
 
 		stderrSpy = installStderrSpy();
 		await runMigration({

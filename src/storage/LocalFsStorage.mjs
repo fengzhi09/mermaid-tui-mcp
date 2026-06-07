@@ -131,6 +131,11 @@ export class LocalFsStorage {
 						// Legacy v0.1.0 entries lack `title`; default to "" so
 						// downstream consumers (search, get_diagram) never see undefined.
 						if (typeof v.title !== "string") v.title = "";
+						// Legacy v0.3.0 entries (pre-ASCII-on-disk) lack `ascii`;
+						// default to "" so the HTML viewer and get_diagram see
+						// a stable shape and can render an empty <pre> instead
+						// of crashing on undefined.
+						if (typeof v.ascii !== "string") v.ascii = "";
 						this.store.set(k, v);
 					}
 				}
@@ -240,11 +245,12 @@ export class LocalFsStorage {
 	 * @param {string} id
 	 * @param {string} code
 	 * @param {string} svg
+	 * @param {string} ascii
 	 * @param {number} sourceLength
 	 * @param {string} [title]
 	 * @returns {Promise<import("./Backend.mjs").Entry>}
 	 */
-	async put(id, code, svg, sourceLength, title) {
+	async put(id, code, svg, ascii, sourceLength, title) {
 		const entry = {
 			code,
 			createdAt: Date.now(),
@@ -252,6 +258,7 @@ export class LocalFsStorage {
 			lastAccessedAt: Date.now(),
 			sourceLength: typeof sourceLength === "number" ? sourceLength : code.length,
 			title: typeof title === "string" ? title : "",
+			ascii: typeof ascii === "string" ? ascii : "",
 		};
 		this.store.set(id, entry);
 		const blobPath = join(this.blobsDir, `${id}.svg`);

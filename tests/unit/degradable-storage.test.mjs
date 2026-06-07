@@ -297,9 +297,9 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		const primary = makeStubPrimary("p");
 		const fallback = makeStubFallback("f");
 		const ds = new DegradableStorage(primary, fallback, { logger });
-		const result = await ds.put("i1", "code", "<svg/>", 4, "t");
+		const result = await ds.put("i1", "code", "<svg/>", "", 4, "t");
 		expect(result.id).toBe("i1");
-		expect(primary.put).toHaveBeenCalledWith("i1", "code", "<svg/>", 4, "t");
+		expect(primary.put).toHaveBeenCalledWith("i1", "code", "<svg/>", "", 4, "t");
 		expect(fallback.put).not.toHaveBeenCalled();
 		expect(primary.recordSuccess).toHaveBeenCalled();
 		// No breaker event on a plain success.
@@ -318,9 +318,9 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		primary._controls.failOpForever("put", new Error("S3 timeout"));
 		const fallback = makeStubFallback("f");
 		const ds = new DegradableStorage(primary, fallback, { logger });
-		const result = await ds.put("i1", "code", "<svg/>", 4, "t");
+		const result = await ds.put("i1", "code", "<svg/>", "", 4, "t");
 		// Fallback was called with the same args.
-		expect(fallback.put).toHaveBeenCalledWith("i1", "code", "<svg/>", 4, "t");
+		expect(fallback.put).toHaveBeenCalledWith("i1", "code", "<svg/>", "", 4, "t");
 		// Result is the fallback's return value.
 		expect(result.id).toBe("i1");
 		// 1 failure recorded, breaker still closed.
@@ -342,10 +342,10 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		primary._controls.failOpForever("put", new Error("S3 down"));
 		const ds = new DegradableStorage(primary, makeStubFallback("f"));
 		const tBefore = Date.now();
-		await ds.put("i1", "c", "s", 1);
-		await ds.put("i2", "c", "s", 1);
+		await ds.put("i1", "c", "s", "", 1);
+		await ds.put("i2", "c", "s", "", 1);
 		const tMid = Date.now();
-		await ds.put("i3", "c", "s", 1);
+		await ds.put("i3", "c", "s", "", 1);
 		const tAfter = Date.now();
 		expect(primary.breaker.failureCount).toBe(3);
 		expect(primary.breaker.state).toBe("open");
@@ -367,10 +367,10 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 			const primary = makeStubPrimary("p", { breakerOverride: { threshold: 3 } });
 			primary._controls.failOpForever("put", new Error("S3 down"));
 			const ds = new DegradableStorage(primary, makeStubFallback("f"), { counters, logger });
-			await ds.put("i1", "c", "s", 1);
-			await ds.put("i2", "c", "s", 1);
-			await ds.put("i3", "c", "s", 1); // trip
-			await ds.put("i4", "c", "s", 1); // post-trip, no new open event
+			await ds.put("i1", "c", "s", "", 1);
+			await ds.put("i2", "c", "s", "", 1);
+			await ds.put("i3", "c", "s", "", 1); // trip
+			await ds.put("i4", "c", "s", "", 1); // post-trip, no new open event
 
 			// Exactly ONE breaker_open event (the actual transition).
 			const breakerOpen = logger.log.mock.calls.filter((c) => c[0]?.event === "breaker_open");
@@ -402,8 +402,8 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		primary._controls.failOpForever("put", new Error("S3 down"));
 		const fallback = makeStubFallback("f");
 		const ds = new DegradableStorage(primary, fallback, { threshold: 2, halfOpenAfterMs: 1_000_000 });
-		await ds.put("i1", "c", "s", 1);
-		await ds.put("i2", "c", "s", 1);
+		await ds.put("i1", "c", "s", "", 1);
+		await ds.put("i2", "c", "s", "", 1);
 		// After 2nd call: state=open, openedAt set to ~now. canAttempt is
 		// false for the next 1_000_000ms.
 		expect(primary.breaker.state).toBe("open");
@@ -411,9 +411,9 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		const primaryPutCallsBefore = primary.put.mock.calls.length;
 		// Subsequent 3 calls should all go to fallback; primary.put not
 		// called again; recordFailure not called again (cool-down period).
-		await ds.put("i3", "c", "s", 1);
-		await ds.put("i4", "c", "s", 1);
-		await ds.put("i5", "c", "s", 1);
+		await ds.put("i3", "c", "s", "", 1);
+		await ds.put("i4", "c", "s", "", 1);
+		await ds.put("i5", "c", "s", "", 1);
 		expect(primary.put.mock.calls.length).toBe(primaryPutCallsBefore);
 		expect(primary.recordFailure.mock.calls.length).toBe(recordFailureCallsBefore);
 		expect(fallback.put).toHaveBeenCalledTimes(3 + 2); // 3 post-trip + 2 during trip
@@ -436,9 +436,9 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		const ds = new DegradableStorage(primary, fallback, { halfOpenAfterMs: 1000 });
 		expect(ds.health().degraded).toBe(false); // half-open → not degraded
 		expect(primary.canAttempt()).toBe(true); // past window
-		await ds.put("i9", "c", "s", 1, "t");
+		await ds.put("i9", "c", "s", "", 1, "t");
 		// Probe was attempted.
-		expect(primary.put).toHaveBeenCalledWith("i9", "c", "s", 1, "t");
+		expect(primary.put).toHaveBeenCalledWith("i9", "c", "s", "", 1, "t");
 		expect(fallback.put).not.toHaveBeenCalled();
 	});
 
@@ -452,7 +452,7 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		});
 		const logger = { log: vi.fn() };
 		const ds = new DegradableStorage(primary, makeStubFallback("f"), { logger, halfOpenAfterMs: 1000 });
-		await ds.put("i10", "c", "s", 1);
+		await ds.put("i10", "c", "s", "", 1);
 		// recordSuccess was called.
 		expect(primary.recordSuccess).toHaveBeenCalled();
 		// Breaker now closed.
@@ -486,7 +486,7 @@ describe("DegradableStorage (M003/S03/T03 — OssStorage.breaker-driven wrapper)
 		const logger = { log: vi.fn() };
 		const ds = new DegradableStorage(primary, makeStubFallback("f"), { logger, halfOpenAfterMs: 1000 });
 		const before = Date.now();
-		await ds.put("i11", "c", "s", 1);
+		await ds.put("i11", "c", "s", "", 1);
 		const after = Date.now();
 		// recordFailure called → failureCount bumped from 3 → 4, but
 		// recordFailure returns opened=false (breaker was already open).
