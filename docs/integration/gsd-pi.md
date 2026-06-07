@@ -1,5 +1,7 @@
 # Integrating mermaid-tui-mcp with gsd-pi
 
+The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp). All paths in the legacy `mcp.json` form below go through `npx`, so no local clone is required.
+
 ## Recommended: the `mermaid-direct` gsd-pi extension (v0.3.0+)
 
 The default gsd-pi MCP transport (`mcp_client` extension backed by `@modelcontextprotocol/sdk` 1.29.0) **double-escapes the `code` arg** when relaying a `tools/call` request, so multi-line Mermaid source arrives at the server with literal `\n` instead of real newlines. The Mermaid 11 parser then chokes on the single-line input. This affects every real-world use case (`graph TD\n  A --> B\n  B --> C` etc.) — **the `mcp_client`-driven integration is effectively unusable for the headline mermaid use case**.
@@ -8,11 +10,21 @@ The fix is the `mermaid-direct` gsd-pi extension shipped in `extensions/gsd-pi-m
 
 ### Install
 
+The extension is gsd-pi-specific (not on npm) and is shipped inside the `mermaid-tui-mcp` package at `node_modules/mermaid-tui-mermaid/extensions/gsd-pi-mermaid/`. Two install paths:
+
 ```bash
-# from inside the mermaid-tui-mcp repo
+# 1. Install the mermaid-tui-mcp package (one-time, user-scope)
+npm install -g mermaid-tui-mcp
+
+# 2. Copy the bundled gsd-pi extension to your gsd-pi extensions dir
 mkdir -p ~/.pi/agent/extensions
-cp -r extensions/gsd-pi-mermaid ~/.pi/agent/extensions/mermaid-direct
-# then /reload in gsd-pi
+cp -r "$(npm root -g)/mermaid-tui-mcp/extensions/gsd-pi-mermaid" ~/.pi/agent/extensions/mermaid-direct
+
+# 3. Point the extension at the npm-installed server (one-time env var)
+#    Add this to your shell rc so it persists across gsd-pi sessions:
+export MERMAID_SERVER_PATH="$(npm root -g)/mermaid-tui-mcp/src/server.mjs"
+
+# 4. /reload in gsd-pi
 ```
 
 The extension registers 7 tools: `mermaid_render`, `mermaid_pin`, `mermaid_unpin`, `mermaid_get`, `mermaid_list`, `mermaid_search`, `mermaid_delete`.
@@ -21,7 +33,7 @@ The extension registers 7 tools: `mermaid_render`, `mermaid_pin`, `mermaid_unpin
 
 | Env var | Default | Purpose |
 |---------|---------|---------|
-| `MERMAID_SERVER_PATH` | `<projectRoot>/src/server.mjs` | Path to the mermaid server entrypoint |
+| `MERMAID_SERVER_PATH` | `<projectRoot>/src/server.mjs` (only valid when you run gsd-pi from inside a local `mermaid-tui-mcp` checkout) | Absolute path to the mermaid server entrypoint. Set to `$(npm root -g)/mermaid-tui-mcp/src/server.mjs` for the npm-install flow above. |
 | `PI_PROJECT_DIR` | (gsd-pi per-session) | Project root the default `MERMAID_SERVER_PATH` is resolved from |
 | All `MERMAID_RENDERER_*` and `MERMAID_OSS_*` env vars | inherited | Forwarded verbatim to the spawned server (so `MERMAID_RENDERER_DATA`, `MERMAID_OSS_ENDPOINT`, etc. work as if you ran the server directly) |
 
@@ -51,20 +63,14 @@ If you must use the standard mcp.json path (e.g. you need other MCP servers that
 {
   "mcpServers": {
     "mermaid": {
-      "command": "node",
-      "args": [
-        "C:/Users/ace12/Documents/龙叔智能/codes/mermaid-tui-mcp/src/server.mjs"
-      ]
+      "command": "npx",
+      "args": ["-y", "mermaid-tui-mcp"]
     }
   }
 }
 ```
 
-Replace the path with wherever you cloned `mermaid-tui-mcp`. Use forward slashes or escaped backslashes on Windows:
-
-```json
-"args": ["C:/Users/ace12/Documents/龙叔智能/codes/mermaid-tui-mcp/src/server.mjs"]
-```
+`npx` resolves the package from the npm registry on first use; no local clone is needed.
 
 ## Global config (applies to every gsd-pi project)
 
@@ -74,10 +80,8 @@ Replace the path with wherever you cloned `mermaid-tui-mcp`. Use forward slashes
 {
   "mcpServers": {
     "mermaid": {
-      "command": "node",
-      "args": [
-        "C:/Users/ace12/Documents/龙叔智能/codes/mermaid-tui-mcp/src/server.mjs"
-      ]
+      "command": "npx",
+      "args": ["-y", "mermaid-tui-mcp"]
     }
   }
 }
@@ -93,7 +97,7 @@ The first time gsd-pi sees the entry, it will prompt:
 
 > Trust MCP server "mermaid"? Project config `<...>/.gsd/mcp.json` wants to start:
 >
->   node C:/.../mermaid-tui-mcp/src/server.mjs
+>   npx -y mermaid-tui-mcp
 >
 > Only approve MCP servers you trust.
 
@@ -114,14 +118,12 @@ If the tool is not being called, list available MCP servers in gsd-pi with `/mcp
 The stdio MCP path does not need a long-running daemon. But if you want the `httpLink` (with the pin button) to actually work, start the HTTP standalone mode separately:
 
 ```bash
-# git bash / WSL / Linux / macOS
-bash /path/to/mermaid-tui-mcp/bin/start.sh
-
-# Windows PowerShell
-powershell -File C:/Users/ace12/Documents/龙叔智能/codes/mermaid-tui-mcp/bin/start.ps1
+MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
 ```
 
 The `httpLink` is `http://127.0.0.1:5300/view?id=<id>`. If the daemon is not running, the LLM still gets a valid `fileLink` that opens the viewer at `file://`.
+
+A managed background daemon (PID file + log + auto-restart) is also available via the bash helper shipped in the npm package at `$(npm root -g)/mermaid-tui-mcp/bin/start.sh` — but the inline `npx` command above is the common case.
 
 ## v0.3.0 cloud storage (OssStorage)
 
@@ -148,11 +150,10 @@ existing v0.2.0 `data/` into a bucket.
 
 ### Migrating from local to cloud
 
-`node bin/migrate-to-oss.mjs` (idempotent, dry-run-able, 4-of-5 post-sweep
-invariant, exit codes 0/1/2). See `README.md` for the full CLI doc.
+`npx -y mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
 
 ## Notes
 
 - gsd-pi treats MCP server config as JSON. Comments are not allowed. Trailing commas are not allowed.
-- The `args` array is passed verbatim. No shell expansion. If your path contains spaces (e.g. `Documents/龙叔智能/`), you do NOT need to quote it inside the JSON string — JSON strings already handle spaces.
-- gsd-pi clears the trust cache when you change `command` / `args` / `cwd` / `env`. If you move the project you will be re-prompted to approve.
+- gsd-pi clears the trust cache when you change `command` / `args` / `cwd` / `env`. If you switch between the npx form and a local-path form, you will be re-prompted to approve.
+- For per-project data isolation in the legacy mcp.json path, set `MERMAID_RENDERER_DATA` in the server's env via the gsd-pi `mcpServers.<name>.env` map.

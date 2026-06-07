@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **npm package distribution: `mermaid-tui-mcp` is now installable via `npm install mermaid-tui-mcp` or `npx -y mermaid-tui-mcp`.** The `package.json` `bin` field exposes the same `src/server.mjs` entrypoint as the `mermaid-tui-mcp` command, so `npx -y mermaid-tui-mcp` (with `MERMAID_RENDERER_HTTP=1` for the optional HTTP mode) starts the server without any local clone. `package.json` gained the npm metadata required for a public publish: `keywords`, `author`, `license: MIT`, `homepage`, `repository`, `bugs`, `publishConfig.access: public`, and a `files` allowlist (`src/`, `bin/`, `public/`, `README.md`, `LICENSE`, `CHANGELOG.md`) so the npm tarball stays small and excludes `tests/`, `scripts/`, `docs/`, `.github/`, `coverage/`, and `data/`. `src/server.mjs` now has a `#!/usr/bin/env node` shebang so the bin entry is directly executable on every platform.
+
+### Changed
+
+- **All 5 client integration docs (`docs/integration/{claude-code,gsd-pi,opencode,hermes,openclaw}.md`), the root `README.md` Quick Start, the root `.mcp.json`, and the `package.json` `mcpServers` reference block were migrated from hard-coded absolute paths (`C:/Users/.../src/server.mjs`, `${workspaceFolder}/src/server.mjs`) to the `npx -y mermaid-tui-mcp` form.** No local clone, no per-platform path quoting, no `cp -r extensions/...` dance for the common case. The `bin` name was renamed from `gsd-mermaid-renderer` to `mermaid-tui-mcp` to match the package name (so `npx mermaid-tui-mcp` resolves to the same script). The `mermaid-direct` gsd-pi extension install flow now goes through `npm install -g mermaid-tui-mcp` first, then `cp -r "$(npm root -g)/mermaid-tui-mcp/extensions/gsd-pi-mermaid" ~/.pi/agent/extensions/mermaid-direct` and `export MERMAID_SERVER_PATH="$(npm root -g)/mermaid-tui-mcp/src/server.mjs"`. The OpenClaw workaround 2 was rewritten to use a dynamic `import()` of the npm-resolved `render.mjs` path (via `npm root -g` + `pathToFileURL`) so it works without a local clone. The gsd-pi first-run trust prompt now shows `npx -y mermaid-tui-mcp` instead of a `node <abs-path>` command.
+
+### Removed
+
+- **`"private": true` from `package.json`** — the gate that prevented accidental `npm publish` is gone. The actual publish step is still a manual operator action (not run by CI); the `publishConfig.access: public` is the explicit declaration that the package is intended to be public.
+
 ## [0.3.0] - 2026-06-05
 
 ### Added

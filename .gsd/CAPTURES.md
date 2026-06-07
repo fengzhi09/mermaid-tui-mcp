@@ -770,3 +770,8 @@ token values. Future captures should redact credentials before submission
 **Resolved:** 2026-06-06T17:20:00.000Z
 **Milestone:** M003 (S02)
 **Re-confirmed:** 2026-06-06T17:20:00.000Z — first triage pass. Re-read the capture against the live M003 state: S02 is `complete` (4/4 tasks shipped — color palette file written, view.html refactored to main.css, render.mjs CSS-variable injection, JS+localStorage+integration test+4 evidence PNGs all done), S03 is `pending` (云存储降级路径完整化, unrelated to themes), S01 is `pending` (depends:[S03], unrelated to themes). The capture's 3 sub-issues (care/warm color similarity, 4→1 button redesign, code-block theme-following bug) are all empirical post-completion defects in S02's deliverable and are NOT pre-empted by any other task in S02, S03, or S01. None of S02's T01–T04 needs to be rewritten — they shipped correctly per the original plan; the capture surfaces 3 polish items the original plan didn't anticipate. Classification remains `inject`. S02 must be reopened (`gsd_slice_reopen`) before T05 can be added via `gsd_plan_task`, then T05 executes, then S02 re-closes via `gsd_slice_complete`. Resolution execution deferred to next auto-mode dispatch per the triage unit's "do NOT execute any resolutions" directive. No new blocker discovered during triage.
+
+### CAP-f6271d62
+**Text:** 路径要先改过来，现在本地安装验证成功了，再发npm包
+**Captured:** 2026-06-07T05:56:35.042Z
+**Status:** pending

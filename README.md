@@ -56,17 +56,9 @@ The LLM still calls `render_mermaid` first for any new diagram; the other 6 tool
 
 ## Quick start
 
-### 1. Install
+### 1. Add to your agent
 
-```bash
-git clone https://gitee.com/lhl/mermaid-tui-mcp
-cd mermaid-tui-mcp
-npm install
-```
-
-### 2. Add to your agent
-
-Pick your agent and follow the corresponding doc:
+The server is distributed as the [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp) npm package — there is nothing to install first. `npx` resolves the package from the npm registry on first use and caches it. Pick your agent:
 
 | Agent | Doc | Config file |
 |---|---|---|
@@ -76,17 +68,19 @@ Pick your agent and follow the corresponding doc:
 | Hermes | [docs/integration/hermes.md](docs/integration/hermes.md) | `~/.hermes/config.yaml` |
 | OpenClaw | [docs/integration/openclaw.md](docs/integration/openclaw.md) | (no native MCP — workaround) |
 
-### 3. (Optional) Start the HTTP daemon for browser links + pin
+All five docs use the same `npx -y mermaid-tui-mcp` form — no absolute paths, no local clone, no per-platform quoting.
+
+### 2. (Optional) Start the HTTP daemon for browser links + pin
 
 ```bash
-bash bin/start.sh        # git bash / WSL / macOS / Linux
-# or
-powershell -File bin/start.ps1   # Windows PowerShell
+MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
 ```
 
-Stops the same way (`bin/stop.sh` / `bin/stop.ps1`).
+The same `mermaid-tui-mcp` binary serves both the stdio MCP and the optional HTTP daemon. The HTTP mode binds `http://127.0.0.1:5300` and exposes `/view`, `/raw/svg`, `/pin`, `/health`. Stop with `Ctrl-C`.
 
-Without this, the `fileLink` returned by `render_mermaid` still works (it points to a self-contained HTML file under `data/blobs/`). The `httpLink` will be `null`.
+For a managed background daemon (PID file + log file + health-check poll), a bash helper ships in the npm package at `node_modules/mermaid-tui-mcp/bin/start.sh` — but the inline `npx` command above is what most people want.
+
+Without the HTTP daemon, the `fileLink` returned by `render_mermaid` still works (it points to a self-contained HTML file under the package's `data/blobs/`). The `httpLink` will be `null`.
 
 ### 4. (Optional) Use cloud storage (OssStorage)
 
@@ -183,8 +177,9 @@ mermaid-tui-mcp/
 ├── public/
 │   └── view.html               # self-contained viewer (zoom / pan / pin / download)
 ├── bin/
-│   ├── start.sh / start.ps1
-│   └── stop.sh  / stop.ps1
+│   ├── start.sh / start.ps1      # managed background HTTP daemon
+│   ├── stop.sh  / stop.ps1
+│   └── migrate-to-oss.mjs         # v0.2.0 → v0.3.0 one-shot Local→OSS migration CLI
 ├── tests/
 │   ├── unit/                   # 16 unit test files
 │   ├── integration/            # stdio MCP + HTTP integration tests
@@ -244,15 +239,27 @@ These signals are the canonical observability surface — no manual file inspect
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+For contributors (modifying the source, running the test suite locally, opening a PR):
 
 ```bash
+git clone https://gitee.com/lhl/mermaid-tui-mcp
+cd mermaid-tui-mcp
+npm install
 npm run dev          # auto-reload stdio MCP
 npm run start:http   # HTTP-standalone for browser testing
 
 # full round-trip via the official inspector
 npx @modelcontextprotocol/inspector node src/server.mjs
 ```
+
+For a local checkout that should be reachable as `npx mermaid-tui-mcp` (useful for testing integration docs against a local build), link it globally:
+
+```bash
+npm link              # in the checkout
+npm link mermaid-tui-mcp   # in any other project (or just use it globally)
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
 
 ## Testing
 

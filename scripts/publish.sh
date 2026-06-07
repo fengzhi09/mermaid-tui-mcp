@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# publish.sh — push this repo to Gitee (liuhailong/mermaid-tui-mcp) and GitHub
+# publish.sh — push this repo to Gitee (fengzhi09/mermaid-tui-mcp) and GitHub
 # (fengzhi09/mermaid-tui-mcp).
 #
 # Tokens are read from environment variables and are NEVER written to disk or
@@ -7,9 +7,8 @@
 # `git remote -v` does not leak secrets.
 #
 # Prereqs:
-#   1. Empty repos `liuhailong/mermaid-tui-mcp` on Gitee and
-#      `fengzhi09/mermaid-tui-mcp` on GitHub already exist (create via the
-#      web UI if you have not yet).
+#   1. Empty repos `fengzhi09/mermaid-tui-mcp` on Gitee and GitHub
+#      already exist (create via the web UI if you have not yet).
 #   2. Your shell has GITEE_TOKEN and/or GITHUB_TOKEN set.
 #
 # Usage:
@@ -30,7 +29,7 @@ BRANCH="${BRANCH:-main}"
 TAG=""
 ONLY=""
 
-GITEE_REPO_URL="https://gitee.com/liuhailong/mermaid-tui-mcp.git"
+GITEE_REPO_URL="https://gitee.com/fengzhi09/mermaid-tui-mcp.git"
 GITHUB_REPO_URL="https://github.com/fengzhi09/mermaid-tui-mcp.git"
 
 while [[ $# -gt 0 ]]; do
@@ -130,5 +129,5 @@ if [[ -n "$TAG" ]]; then
 fi
 
 echo "[publish] done."
-echo "  Gitee:  https://gitee.com/liuhailong/mermaid-tui-mcp"
+echo "  Gitee:  https://gitee.com/fengzhi09/mermaid-tui-mcp"
 echo "  GitHub: https://github.com/fengzhi09/mermaid-tui-mcp"

@@ -3,10 +3,9 @@
     "version": "0.3.0",
     "description": "Local mermaid rendering service for gsd-pi. stdio MCP server (default) for the live command-box flow; HTTP 127.0.0.1:5300 in standalone mode for browser view pages. 7-day TTL with optional pin.",
     "type": "module",
-    "private": true,
     "main": "src/server.mjs",
     "bin": {
-        "gsd-mermaid-renderer": "src/server.mjs"
+        "mermaid-tui-mcp": "src/server.mjs"
     },
     "scripts": {
         "start": "node src/server.mjs",
@@ -25,12 +24,50 @@
     "engines": {
         "node": ">=22.0.0"
     },
+    "files": [
+        "src",
+        "bin",
+        "public",
+        "extensions",
+        "README.md",
+        "LICENSE",
+        "CHANGELOG.md"
+    ],
+    "keywords": [
+        "mermaid",
+        "mcp",
+        "model-context-protocol",
+        "diagram",
+        "ascii",
+        "tui",
+        "agent",
+        "claude-code",
+        "gsd-pi",
+        "opencode",
+        "hermes",
+        "openclaw"
+    ],
+    "author": "lhl",
+    "license": "MIT",
+    "homepage": "https://gitee.com/fengzhi09/mermaid-tui-mcp#readme",
+    "repository": {
+        "type": "git",
+        "url": "https://gitee.com/fengzhi09/mermaid-tui-mcp.git"
+    },
+    "bugs": {
+        "url": "https://gitee.com/fengzhi09/mermaid-tui-mcp/issues"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
     "mcpServers": {
         "_comment": "Documented for /gsd mcp init reference; user copies into .gsd/mcp.json or ~/.gsd/mcp.json",
         "gsd-mermaid": {
-            "command": "node",
+            "command": "npx",
             "args": [
-                "${workspaceFolder}/src/server.mjs"
+                "-y",
+                "mermaid-tui-mcp"
             ]
         }
     },

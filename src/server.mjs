@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // gsd-mermaid-renderer — dual-protocol server (stdio MCP + optional HTTP).
 //
 // Default: stdio MCP server. Spawned by gsd-pi as a child process. Exposes the
