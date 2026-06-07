@@ -1,6 +1,6 @@
-# Integrating mermaid-tui-mcp with gsd-pi
+# Integrating @acer_09/mermaid-tui-mcp with gsd-pi
 
-The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp). All paths in the legacy `mcp.json` form below go through `npx`, so no local clone is required.
+The `@acer_09/mermaid-tui-mcp` server is published on npm as [`@acer_09/mermaid-tui-mcp`](https://www.npmjs.com/package/@acer_09/mermaid-tui-mcp). All paths in the legacy `mcp.json` form below go through `npx`, so no local clone is required.
 
 ## Recommended: the `mermaid-direct` gsd-pi extension (v0.3.0+)
 
@@ -10,11 +10,11 @@ The fix is the `mermaid-direct` gsd-pi extension shipped in `extensions/gsd-pi-m
 
 ### Install
 
-The extension is gsd-pi-specific (not on npm) and is shipped inside the `mermaid-tui-mcp` package at `node_modules/mermaid-tui-mermaid/extensions/gsd-pi-mermaid/`. Two install paths:
+The extension is gsd-pi-specific (not on npm) and is shipped inside the `@acer_09/mermaid-tui-mcp` package at `node_modules/mermaid-tui-mermaid/extensions/gsd-pi-mermaid/`. Two install paths:
 
 ```bash
-# 1. Install the mermaid-tui-mcp package (one-time, user-scope)
-npm install -g mermaid-tui-mcp
+# 1. Install the @acer_09/mermaid-tui-mcp package (one-time, user-scope)
+npm install -g @acer_09/mermaid-tui-mcp
 
 # 2. Copy the bundled gsd-pi extension to your gsd-pi extensions dir
 mkdir -p ~/.pi/agent/extensions
@@ -33,7 +33,7 @@ The extension registers 7 tools: `mermaid_render`, `mermaid_pin`, `mermaid_unpin
 
 | Env var | Default | Purpose |
 |---------|---------|---------|
-| `MERMAID_SERVER_PATH` | `<projectRoot>/src/server.mjs` (only valid when you run gsd-pi from inside a local `mermaid-tui-mcp` checkout) | Absolute path to the mermaid server entrypoint. Set to `$(npm root -g)/mermaid-tui-mcp/src/server.mjs` for the npm-install flow above. |
+| `MERMAID_SERVER_PATH` | `<projectRoot>/src/server.mjs` (only valid when you run gsd-pi from inside a local `@acer_09/mermaid-tui-mcp` checkout) | Absolute path to the mermaid server entrypoint. Set to `$(npm root -g)/mermaid-tui-mcp/src/server.mjs` for the npm-install flow above. |
 | `PI_PROJECT_DIR` | (gsd-pi per-session) | Project root the default `MERMAID_SERVER_PATH` is resolved from |
 | All `MERMAID_RENDERER_*` and `MERMAID_OSS_*` env vars | inherited | Forwarded verbatim to the spawned server (so `MERMAID_RENDERER_DATA`, `MERMAID_OSS_ENDPOINT`, etc. work as if you ran the server directly) |
 
@@ -64,7 +64,7 @@ If you must use the standard mcp.json path (e.g. you need other MCP servers that
   "mcpServers": {
     "mermaid": {
       "command": "npx",
-      "args": ["-y", "mermaid-tui-mcp"]
+      "args": ["-y", "@acer_09/mermaid-tui-mcp"]
     }
   }
 }
@@ -81,7 +81,7 @@ If you must use the standard mcp.json path (e.g. you need other MCP servers that
   "mcpServers": {
     "mermaid": {
       "command": "npx",
-      "args": ["-y", "mermaid-tui-mcp"]
+      "args": ["-y", "@acer_09/mermaid-tui-mcp"]
     }
   }
 }
@@ -97,7 +97,7 @@ The first time gsd-pi sees the entry, it will prompt:
 
 > Trust MCP server "mermaid"? Project config `<...>/.gsd/mcp.json` wants to start:
 >
->   npx -y mermaid-tui-mcp
+>   npx -y @acer_09/mermaid-tui-mcp
 >
 > Only approve MCP servers you trust.
 
@@ -118,7 +118,7 @@ If the tool is not being called, list available MCP servers in gsd-pi with `/mcp
 The stdio MCP path does not need a long-running daemon. But if you want the `httpLink` (with the pin button) to actually work, start the HTTP standalone mode separately:
 
 ```bash
-MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
+MERMAID_RENDERER_HTTP=1 npx -y @acer_09/mermaid-tui-mcp
 ```
 
 The `httpLink` is `http://127.0.0.1:5300/view?id=<id>`. If the daemon is not running, the LLM still gets a valid `fileLink` that opens the viewer at `file://`.
@@ -150,7 +150,7 @@ existing v0.2.0 `data/` into a bucket.
 
 ### Migrating from local to cloud
 
-`npx -y mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
+`npx -y @acer_09/mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
 
 ## Notes
 

@@ -1,6 +1,6 @@
-# Integrating mermaid-tui-mcp with Claude Code
+# Integrating @acer_09/mermaid-tui-mcp with Claude Code
 
-The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp). Claude Code reads MCP server config from `.mcp.json` at the project root (project scope) or `~/.claude.json` (user scope). See the [Claude Code MCP docs](https://docs.claude.com/en/docs/claude-code/mcp) for the latest details.
+The `@acer_09/mermaid-tui-mcp` server is published on npm as [`@acer_09/mermaid-tui-mcp`](https://www.npmjs.com/package/@acer_09/mermaid-tui-mcp). Claude Code reads MCP server config from `.mcp.json` at the project root (project scope) or `~/.claude.json` (user scope). See the [Claude Code MCP docs](https://docs.claude.com/en/docs/claude-code/mcp) for the latest details.
 
 ## Project scope (recommended for repo-bound work)
 
@@ -11,7 +11,7 @@ The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://
   "mcpServers": {
     "mermaid": {
       "command": "npx",
-      "args": ["-y", "mermaid-tui-mcp"]
+      "args": ["-y", "@acer_09/mermaid-tui-mcp"]
     }
   }
 }
@@ -28,7 +28,7 @@ Project-scoped servers are typically committed to the repo so every contributor 
   "mcpServers": {
     "mermaid": {
       "command": "npx",
-      "args": ["-y", "mermaid-tui-mcp"]
+      "args": ["-y", "@acer_09/mermaid-tui-mcp"]
     }
   }
 }
@@ -75,7 +75,7 @@ claude --mcp-config '{
   "mcpServers": {
     "mermaid": {
       "command": "npx",
-      "args": ["-y", "mermaid-tui-mcp"]
+      "args": ["-y", "@acer_09/mermaid-tui-mcp"]
     }
   }
 }'
@@ -86,7 +86,7 @@ claude --mcp-config '{
 The stdio MCP path is the only required piece. If you also want the `httpLink` (with the browser view page + pin button) to work, start the HTTP daemon in a separate shell. The npm package ships the same HTTP server, so the same `npx` form works — just add the env var:
 
 ```bash
-MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
+MERMAID_RENDERER_HTTP=1 npx -y @acer_09/mermaid-tui-mcp
 ```
 
 The daemon binds to `http://127.0.0.1:5300` and serves `/view?id=<id>`, `/raw/svg?id=<id>`, `/pin?id=<id>`, and `/health`. If the daemon is not running, the LLM still gets a valid `fileLink` that opens the viewer at `file://`.
@@ -118,10 +118,10 @@ existing v0.2.0 `data/` into a bucket.
 
 ### Migrating from local to cloud
 
-`npx -y mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
+`npx -y @acer_09/mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
 
 ## Notes
 
-- The `npx -y mermaid-tui-mcp` form works on every platform Claude Code supports (Windows, macOS, Linux). No path quoting or backslash escaping is required — `npx` resolves the package from the npm registry, so there is no local clone or absolute path to maintain.
-- Each Claude Code session spawns its own MCP child. Multiple sessions = multiple child processes. The data store is shared (same `data/` directory inside the `mermaid-tui-mcp` package install), so diagrams rendered in one session are visible to another as long as they have not expired. If you want a separate data dir per project, set `MERMAID_RENDERER_DATA=/path/to/dir` in the server's env via the Claude Code `mcpServers.<name>.env` field.
-- See the Claude Code MCP docs for `sse` transport and OAuth flows if you need to point at a remote `mermaid-tui-mcp` over the network. This project only ships the stdio transport out of the box.
+- The `npx -y @acer_09/mermaid-tui-mcp` form works on every platform Claude Code supports (Windows, macOS, Linux). No path quoting or backslash escaping is required — `npx` resolves the package from the npm registry, so there is no local clone or absolute path to maintain.
+- Each Claude Code session spawns its own MCP child. Multiple sessions = multiple child processes. The data store is shared (same `data/` directory inside the `@acer_09/mermaid-tui-mcp` package install), so diagrams rendered in one session are visible to another as long as they have not expired. If you want a separate data dir per project, set `MERMAID_RENDERER_DATA=/path/to/dir` in the server's env via the Claude Code `mcpServers.<name>.env` field.
+- See the Claude Code MCP docs for `sse` transport and OAuth flows if you need to point at a remote `@acer_09/mermaid-tui-mcp` over the network. This project only ships the stdio transport out of the box.

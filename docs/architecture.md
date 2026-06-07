@@ -7,7 +7,7 @@
 | **stdio MCP** | Zero port management; gsd-pi / Claude Code / opencode / Hermes all support it natively; automatic lifecycle (child exits when parent exits); no authentication story needed | Slower cold start per session (~1–2 s for jsdom + mermaid 11 init) | ✅ default |
 | **HTTP (REST)** | One shared daemon across sessions; view page + pin in one process | Port conflicts when multiple sessions are open; needs start.sh dance; ad-hoc — not how agents integrate MCP | ⚠️ optional companion |
 | **SSE** | Compatible with web clients | opencode has documented issues with SSE (SST/opencode#834); extra complexity for no gain | ❌ not used |
-| **Library (npm import)** | Smallest possible surface | Forces every agent to add `mermaid-tui-mcp` to its own bundle; bypasses the MCP tool-discovery UX | ❌ not used |
+| **Library (npm import)** | Smallest possible surface | Forces every agent to add `@acer_09/mermaid-tui-mcp` to its own bundle; bypasses the MCP tool-discovery UX | ❌ not used |
 
 The stdio path is the right default. HTTP-standalone is a one-line opt-in (`MERMAID_RENDERER_HTTP=1`) for users who want the browser view + pin to work.
 

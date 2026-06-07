@@ -1,6 +1,6 @@
-# Integrating mermaid-tui-mcp with Hermes (Nous Research)
+# Integrating @acer_09/mermaid-tui-mcp with Hermes (Nous Research)
 
-The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp). [Hermes Agent](https://hermes-agent.nousresearch.com) has a built-in MCP client since v0.2.0. Servers are configured in `~/.hermes/config.yaml` under the `mcp_servers` key.
+The `@acer_09/mermaid-tui-mcp` server is published on npm as [`@acer_09/mermaid-tui-mcp`](https://www.npmjs.com/package/@acer_09/mermaid-tui-mcp). [Hermes Agent](https://hermes-agent.nousresearch.com) has a built-in MCP client since v0.2.0. Servers are configured in `~/.hermes/config.yaml` under the `mcp_servers` key.
 
 ## Config location
 
@@ -13,7 +13,7 @@ mcp_servers:
     command: npx
     args:
       - "-y"
-      - "mermaid-tui-mcp"
+      - "@acer_09/mermaid-tui-mcp"
     # optional:
     # env: {}
     # timeout: 120
@@ -46,7 +46,7 @@ All 7 `mermaid` tools should appear alongside Hermes's built-in tools.
 ## (Optional) HTTP daemon for browser view + pin
 
 ```bash
-MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
+MERMAID_RENDERER_HTTP=1 npx -y @acer_09/mermaid-tui-mcp
 ```
 
 Binds `http://127.0.0.1:5300`. The stdio MCP path works without it.
@@ -76,11 +76,11 @@ existing v0.2.0 `data/` into a bucket.
 
 ### Migrating from local to cloud
 
-`npx -y mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
+`npx -y @acer_09/mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
 
 ## Notes
 
-- Hermes is YAML-based, not JSON. `npx` and `mermaid-tui-mcp` are quoted above to be safe; YAML 1.2 generally accepts bare strings, but quoting avoids any ambiguity on parsers that still treat the leading `-` as a list marker.
+- Hermes is YAML-based, not JSON. `npx` and `@acer_09/mermaid-tui-mcp` are quoted above to be safe; YAML 1.2 generally accepts bare strings, but quoting avoids any ambiguity on parsers that still treat the leading `-` as a list marker.
 - `timeout` (per tool call, in seconds) defaults to 120. Mermaid renders are typically < 1 s; 120 is plenty. Bump it if you are rendering very large diagrams.
 - `tools.include` (default: empty list = load all 7) and `tools.exclude` let you filter the registered toolset. Use `include` to keep the surface minimal (e.g. `[render_mermaid, delete_mermaid]` for a read-only LLM that also needs to clean up).
 - If the `mermaid` server fails to spawn, check `~/.hermes/logs/` for the child process stderr. The most common cause on a fresh machine is `npx` being absent (install Node.js ≥ 22 from nodejs.org).

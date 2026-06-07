@@ -1,6 +1,6 @@
-# Integrating mermaid-tui-mcp with opencode
+# Integrating @acer_09/mermaid-tui-mcp with opencode
 
-The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp). [opencode](https://opencode.ai) (by SST) supports stdio MCP servers via its `mcp` config key.
+The `@acer_09/mermaid-tui-mcp` server is published on npm as [`@acer_09/mermaid-tui-mcp`](https://www.npmjs.com/package/@acer_09/mermaid-tui-mcp). [opencode](https://opencode.ai) (by SST) supports stdio MCP servers via its `mcp` config key.
 
 ## Config locations (priority: project > global)
 
@@ -17,7 +17,7 @@ The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://
   "mcp": {
     "mermaid": {
       "type": "local",
-      "command": ["npx", "-y", "mermaid-tui-mcp"],
+      "command": ["npx", "-y", "@acer_09/mermaid-tui-mcp"],
       "enabled": true
     }
   }
@@ -33,7 +33,7 @@ The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://
   "mcp": {
     "mermaid": {
       "type": "local",
-      "command": ["npx", "-y", "mermaid-tui-mcp"],
+      "command": ["npx", "-y", "@acer_09/mermaid-tui-mcp"],
       "enabled": true
     }
   }
@@ -59,7 +59,7 @@ The `mermaid` server should be listed. All 7 of its tools become available to th
 ## (Optional) HTTP daemon for browser view + pin
 
 ```bash
-MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
+MERMAID_RENDERER_HTTP=1 npx -y @acer_09/mermaid-tui-mcp
 ```
 
 Binds `http://127.0.0.1:5300`. The stdio MCP path works without it; the HTTP daemon only adds browser-viewable links and the pin API.
@@ -89,10 +89,10 @@ existing v0.2.0 `data/` into a bucket.
 
 ### Migrating from local to cloud
 
-`npx -y mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
+`npx -y @acer_09/mermaid-tui-mcp --bin=migrate-to-oss` (or, from a local checkout, `node bin/migrate-to-oss.mjs`). The CLI is idempotent, dry-run-able, 4-of-5 post-sweep invariant, exit codes 0/1/2. See `README.md` for the full CLI doc.
 
 ## Notes
 
 - The exact schema and field names (`type: "local"`, `command: [...]`) follow the opencode v0.6+ conventions. If you are on an older version, check the [opencode docs](https://opencode.ai/docs/).
-- opencode has had issues with SSE-based MCP servers (see SST/opencode#834). `mermaid-tui-mcp` only uses stdio, so it is unaffected.
+- opencode has had issues with SSE-based MCP servers (see SST/opencode#834). `@acer_09/mermaid-tui-mcp` only uses stdio, so it is unaffected.
 - Per-project data isolation: set `MERMAID_RENDERER_DATA=/path/to/dir` in the opencode `mcp.<name>.env` map to redirect the data dir away from the package's default `data/` location.

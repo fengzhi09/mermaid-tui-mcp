@@ -1,4 +1,4 @@
-# mermaid-tui-mcp
+# @acer_09/mermaid-tui-mcp
 
 > A local Model Context Protocol (MCP) server that lets any coding agent render Mermaid diagrams into the terminal command box.
 > The LLM calls `render_mermaid` instead of emitting a raw `​```mermaid` block. You get ASCII art inline plus a clickable link to the rendered diagram in a browser.
@@ -10,7 +10,7 @@
 └──────────────────────────────┬───────────────────────────┘
                                │ stdio JSON-RPC
                                ▼
-┌─ mermaid-tui-mcp (this server, child process) ───────────┐
+┌─ @acer_09/mermaid-tui-mcp (this server, child process) ───────────┐
 │   1. mermaid 11 + jsdom  → real SVG                       │
 │   2. mermaid-ascii       → terminal-safe ASCII            │
 │   3. write data/blobs/<id>.{svg,html}                     │
@@ -25,7 +25,7 @@
 
 The TUI command box cannot render Mermaid natively. Without this server, an LLM that wants to show you a diagram has to emit a `​```mermaid` code block, which appears as raw source in the TUI. The user has to mentally parse the syntax — not great.
 
-`mermaid-tui-mcp` solves this with a single tool: the LLM calls `render_mermaid(code)` and gets back ASCII art + a link. The LLM pastes the ASCII into the reply (so the user sees the diagram immediately) and prints the link (so the user can open a real, fully-rendered diagram in their browser if they want).
+`@acer_09/mermaid-tui-mcp` solves this with a single tool: the LLM calls `render_mermaid(code)` and gets back ASCII art + a link. The LLM pastes the ASCII into the reply (so the user sees the diagram immediately) and prints the link (so the user can open a real, fully-rendered diagram in their browser if they want).
 
 ## Features
 
@@ -58,7 +58,7 @@ The LLM still calls `render_mermaid` first for any new diagram; the other 6 tool
 
 ### 1. Add to your agent
 
-The server is distributed as the [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp) npm package — there is nothing to install first. `npx` resolves the package from the npm registry on first use and caches it. Pick your agent:
+The server is distributed as the [`@acer_09/mermaid-tui-mcp`](https://www.npmjs.com/package/@acer_09/mermaid-tui-mcp) npm package — there is nothing to install first. `npx` resolves the package from the npm registry on first use and caches it. Pick your agent:
 
 | Agent | Doc | Config file |
 |---|---|---|
@@ -68,15 +68,15 @@ The server is distributed as the [`mermaid-tui-mcp`](https://www.npmjs.com/packa
 | Hermes | [docs/integration/hermes.md](docs/integration/hermes.md) | `~/.hermes/config.yaml` |
 | OpenClaw | [docs/integration/openclaw.md](docs/integration/openclaw.md) | (no native MCP — workaround) |
 
-All five docs use the same `npx -y mermaid-tui-mcp` form — no absolute paths, no local clone, no per-platform quoting.
+All five docs use the same `npx -y @acer_09/mermaid-tui-mcp` form — no absolute paths, no local clone, no per-platform quoting.
 
 ### 2. (Optional) Start the HTTP daemon for browser links + pin
 
 ```bash
-MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
+MERMAID_RENDERER_HTTP=1 npx -y @acer_09/mermaid-tui-mcp
 ```
 
-The same `mermaid-tui-mcp` binary serves both the stdio MCP and the optional HTTP daemon. The HTTP mode binds `http://127.0.0.1:5300` and exposes `/view`, `/raw/svg`, `/pin`, `/health`. Stop with `Ctrl-C`.
+The same `@acer_09/mermaid-tui-mcp` binary serves both the stdio MCP and the optional HTTP daemon. The HTTP mode binds `http://127.0.0.1:5300` and exposes `/view`, `/raw/svg`, `/pin`, `/health`. Stop with `Ctrl-C`.
 
 For a managed background daemon (PID file + log file + health-check poll), a bash helper ships in the npm package at `node_modules/mermaid-tui-mcp/bin/start.sh` — but the inline `npx` command above is what most people want.
 
@@ -242,7 +242,7 @@ These signals are the canonical observability surface — no manual file inspect
 For contributors (modifying the source, running the test suite locally, opening a PR):
 
 ```bash
-git clone https://gitee.com/lhl/mermaid-tui-mcp
+git clone https://gitee.com/fengzhi09/mermaid-tui-mcp
 cd mermaid-tui-mcp
 npm install
 npm run dev          # auto-reload stdio MCP
@@ -252,11 +252,11 @@ npm run start:http   # HTTP-standalone for browser testing
 npx @modelcontextprotocol/inspector node src/server.mjs
 ```
 
-For a local checkout that should be reachable as `npx mermaid-tui-mcp` (useful for testing integration docs against a local build), link it globally:
+For a local checkout that should be reachable as `npx @acer_09/mermaid-tui-mcp` (useful for testing integration docs against a local build), link it globally:
 
 ```bash
 npm link              # in the checkout
-npm link mermaid-tui-mcp   # in any other project (or just use it globally)
+npm link @acer_09/mermaid-tui-mcp   # in any other project (or just use it globally)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.

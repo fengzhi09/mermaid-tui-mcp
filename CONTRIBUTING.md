@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for your interest in `mermaid-tui-mcp`! This is a small focused tool — the surface area is `src/server.mjs`, `src/render.mjs`, `src/storage.mjs`, and the HTML viewer. Most contributions fit in under 100 lines.
+Thanks for your interest in `@acer_09/mermaid-tui-mcp`! This is a small focused tool — the surface area is `src/server.mjs`, `src/render.mjs`, `src/storage.mjs`, and the HTML viewer. Most contributions fit in under 100 lines.
 
 ## Development
 
 ```bash
-git clone https://gitee.com/lhl/mermaid-tui-mcp
+git clone https://gitee.com/fengzhi09/mermaid-tui-mcp
 cd mermaid-tui-mcp
 npm install
 npm run dev          # auto-reload on src changes (stdio MCP)

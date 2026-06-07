@@ -1,6 +1,6 @@
-# Integrating mermaid-tui-mcp with OpenClaw
+# Integrating @acer_09/mermaid-tui-mcp with OpenClaw
 
-The `mermaid-tui-mcp` server is published on npm as [`mermaid-tui-mcp`](https://www.npmjs.com/package/mermaid-tui-mcp). [OpenClaw](https://github.com/openclaw/openclaw) (as of mid-2026) does **not have native MCP client support**. Tracking issue: [openclaw/openclaw#29053](https://github.com/openclaw/openclaw/issues/29053). There are a few workarounds.
+The `@acer_09/mermaid-tui-mcp` server is published on npm as [`@acer_09/mermaid-tui-mcp`](https://www.npmjs.com/package/@acer_09/mermaid-tui-mcp). [OpenClaw](https://github.com/openclaw/openclaw) (as of mid-2026) does **not have native MCP client support**. Tracking issue: [openclaw/openclaw#29053](https://github.com/openclaw/openclaw/issues/29053). There are a few workarounds.
 
 ## Workaround 1: HTTP transport
 
@@ -8,7 +8,7 @@ Run this server in HTTP-standalone mode (see [docs/architecture.md](../architect
 
 ```bash
 # In one shell, start the HTTP daemon (resolved from the npm package):
-MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
+MERMAID_RENDERER_HTTP=1 npx -y @acer_09/mermaid-tui-mcp
 
 # In OpenClaw, ask the LLM to:
 # 1. build the JSON body: {"code": "graph TD\n  A-->B"}
@@ -20,16 +20,16 @@ MERMAID_RENDERER_HTTP=1 npx -y mermaid-tui-mcp
 
 ## Workaround 2: Call the npm package's `render.mjs` directly (no MCP, no HTTP)
 
-OpenClaw's `exec` tool can run a small Node script that imports the `render` function from inside the npm-installed `mermaid-tui-mcp` package. Because ESM imports need a static path, resolve the package root via `npm root -g` and use a dynamic `import()`:
+OpenClaw's `exec` tool can run a small Node script that imports the `render` function from inside the npm-installed `@acer_09/mermaid-tui-mcp` package. Because ESM imports need a static path, resolve the package root via `npm root -g` and use a dynamic `import()`:
 
 ```js
-// scripts/render-once.mjs (place this in your project, not in mermaid-tui-mcp)
+// scripts/render-once.mjs (place this in your project, not in @acer_09/mermaid-tui-mcp)
 import { execSync } from "node:child_process";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const npmRoot = execSync("npm root -g", { encoding: "utf8" }).trim();
-const renderUrl = pathToFileURL(join(npmRoot, "mermaid-tui-mcp", "src", "render.mjs")).href;
+const renderUrl = pathToFileURL(join(npmRoot, "@acer_09/mermaid-tui-mcp", "src", "render.mjs")).href;
 const { render } = await import(renderUrl);
 
 const code = process.argv[2];
@@ -41,7 +41,7 @@ const { ascii } = await render(code);
 process.stdout.write(ascii);
 ```
 
-Prereq: `npm install -g mermaid-tui-mcp` (so `npm root -g` resolves to a directory containing the package).
+Prereq: `npm install -g @acer_09/mermaid-tui-mcp` (so `npm root -g` resolves to a directory containing the package).
 
 Then in OpenClaw:
 
@@ -77,7 +77,7 @@ the 4-of-5 post-sweep `bin/migrate-to-oss` migration CLI.
 **The OpenClaw workarounds (HTTP-standalone, `render.mjs` direct) do
 not reach the cloud backend.** They render only — no storage, no
 migration, no pin/get/list/search/delete. To use v0.3.0 cloud storage
-from inside OpenClaw, you must run the actual `mermaid-tui-mcp` process
+from inside OpenClaw, you must run the actual `@acer_09/mermaid-tui-mcp` process
 (Workaround 1 plus a paired MCP-capable agent that drives the 7 stdio
 tools), or wait for native MCP support (Workaround 3).
 
